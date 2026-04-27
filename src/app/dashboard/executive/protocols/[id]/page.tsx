@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import AssignReviewerPanel from '@/components/AssignReviewerPanel'
 import OutcomePanel from '@/components/OutcomePanel'
+import ReviewForm from '@/components/ReviewForm'
 
 export default async function ExecutiveProtocolPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -31,6 +32,7 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
     .from('protocol_assignments')
     .select('*, reviewer:profiles(*)')
     .eq('protocol_id', id)
+    .order('assigned_at')
 
   const { data: reviews } = await supabase
     .from('reviews')
@@ -41,12 +43,35 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
     .from('profiles')
     .select('*')
     .in('role', ['reviewer', 'executive', 'admin'])
+    .order('surname')
+
+  // Executive's own review — only shown if they are assigned
+  const isAssigned = assignments?.some(a => a.reviewer_id === user.id) ?? false
+
+  const { data: myReview } = isAssigned
+    ? await supabase.from('reviews').select('*').eq('protocol_id', id).eq('reviewer_id', user.id).single()
+    : { data: null }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+
+      {/* Protocol details */}
       <div className="bg-white rounded-2xl border border-gray-200 p-8">
-        <h1 className="text-xl font-bold text-gray-900 mb-1">{protocol.title || 'Untitled Protocol'}</h1>
-        <p className="text-sm text-gray-500 mb-6">{protocol.serial_text}</p>
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{protocol.title || 'Untitled Protocol'}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{protocol.serial_text}</p>
+          </div>
+          <span className={`text-xs font-medium px-3 py-1.5 rounded-full shrink-0 capitalize ${
+            protocol.final_outcome === 'approved' ? 'bg-green-100 text-green-700' :
+            protocol.final_outcome === 'rejected' ? 'bg-red-100 text-red-700' :
+            protocol.final_outcome === 'minor_amendment' ? 'bg-blue-100 text-blue-700' :
+            protocol.final_outcome === 'major_amendment' ? 'bg-orange-100 text-orange-700' :
+            'bg-yellow-100 text-yellow-700'
+          }`}>
+            {protocol.final_outcome?.replace(/_/g, ' ') ?? 'Pending'}
+          </span>
+        </div>
 
         <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div>
@@ -96,6 +121,7 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
         </dl>
       </div>
 
+      {/* Assign reviewers — two dropdown slots */}
       <AssignReviewerPanel
         protocolId={id}
         assignments={assignments ?? []}
@@ -103,6 +129,7 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
         executiveId={user.id}
       />
 
+      {/* Reviewer submissions — visible to executive */}
       {reviews && reviews.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Reviewer Submissions</h2>
@@ -111,10 +138,13 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
               <div key={review.id} className="border border-gray-100 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-2">
                   <p className="font-medium text-gray-800">
-                    {review.reviewer?.firstname} {review.reviewer?.surname}
+                    {review.reviewer?.professional_title} {review.reviewer?.firstname} {review.reviewer?.surname}
+                    {review.reviewer_id === user.id && (
+                      <span className="ml-2 text-xs text-gray-400">(you)</span>
+                    )}
                   </p>
                   <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 capitalize">
-                    {review.recommendation?.replace('_', ' ')}
+                    {review.recommendation?.replace(/_/g, ' ')}
                   </span>
                 </div>
                 {review.comments && (
@@ -126,6 +156,16 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
         </div>
       )}
 
+      {/* Executive's own review — only if assigned as a reviewer */}
+      {isAssigned && (
+        <ReviewForm
+          protocolId={id}
+          reviewerId={user.id}
+          existingReview={myReview ?? null}
+        />
+      )}
+
+      {/* Final outcome decision — always available to executive */}
       <OutcomePanel
         protocolId={id}
         currentOutcome={protocol.final_outcome}

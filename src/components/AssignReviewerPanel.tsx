@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, ProtocolAssignment } from '@/lib/types'
@@ -17,97 +17,110 @@ export default function AssignReviewerPanel({
   executiveId: string
 }) {
   const router = useRouter()
-  const [selectedId, setSelectedId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const assignedIds = new Set(assignments.map(a => a.reviewer_id))
-  const available = allReviewers.filter(r => !assignedIds.has(r.id))
+  const slot1 = assignments[0] ?? null
+  const slot2 = assignments[1] ?? null
 
-  async function handleAssign() {
-    if (!selectedId) return
+  const [reviewer1Id, setReviewer1Id] = useState(slot1?.reviewer_id ?? '')
+  const [reviewer2Id, setReviewer2Id] = useState(slot2?.reviewer_id ?? '')
+
+  // Re-sync dropdowns whenever the server sends updated assignment data
+  useEffect(() => {
+    setReviewer1Id(assignments[0]?.reviewer_id ?? '')
+    setReviewer2Id(assignments[1]?.reviewer_id ?? '')
+  }, [assignments[0]?.reviewer_id, assignments[1]?.reviewer_id])
+
+  async function handleSave() {
     setSaving(true)
     setError('')
     const supabase = createClient()
-    const { error: err } = await supabase.from('protocol_assignments').insert({
-      protocol_id: protocolId,
-      reviewer_id: selectedId,
-      assigned_by: executiveId,
-      status: 'pending',
-    })
-    if (err) {
-      setError(err.message)
-    } else {
-      setSelectedId('')
-      router.refresh()
-    }
-    setSaving(false)
-  }
 
-  async function handleRemove(assignmentId: string) {
-    const supabase = createClient()
-    await supabase.from('protocol_assignments').delete().eq('id', assignmentId)
+    // Delete existing assignments and re-insert
+    await supabase.from('protocol_assignments').delete().eq('protocol_id', protocolId)
+
+    const toInsert = []
+    if (reviewer1Id) toInsert.push({ protocol_id: protocolId, reviewer_id: reviewer1Id, assigned_by: executiveId, status: 'pending' })
+    if (reviewer2Id && reviewer2Id !== reviewer1Id) toInsert.push({ protocol_id: protocolId, reviewer_id: reviewer2Id, assigned_by: executiveId, status: 'pending' })
+
+    if (toInsert.length > 0) {
+      const { error: err } = await supabase.from('protocol_assignments').insert(toInsert)
+      if (err) { setError(err.message); setSaving(false); return }
+    }
+
+    setSaving(false)
     router.refresh()
   }
 
+  const reviewerOptions = allReviewers.map(r => ({
+    id: r.id,
+    label: `${r.professional_title ?? ''} ${r.firstname ?? ''} ${r.surname ?? ''}`.trim() +
+      (r.id === executiveId ? ' (you)' : '') +
+      (r.role === 'executive' || r.role === 'admin' ? ' · Exec' : ''),
+  }))
+
+  const statusColor = (status: string) =>
+    status === 'completed' ? 'text-green-600' : status === 'in_review' ? 'text-blue-600' : 'text-yellow-600'
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-8">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Assigned Reviewers</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Assign Reviewers</h2>
+      <p className="text-sm text-gray-400 mb-6">Assign up to two reviewers. Executives may assign themselves.</p>
 
-      {assignments.length === 0 ? (
-        <p className="text-sm text-gray-400 mb-4">No reviewers assigned yet.</p>
-      ) : (
-        <div className="space-y-2 mb-4">
-          {assignments.map((a: any) => (
-            <div key={a.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 text-sm">
-              <span className="text-gray-800 font-medium">
-                {a.reviewer?.firstname} {a.reviewer?.surname}
-                <span className="text-gray-400 font-normal ml-2">({a.reviewer?.email})</span>
-              </span>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  a.status === 'completed' ? 'bg-green-100 text-green-700' :
-                  a.status === 'in_review' ? 'bg-blue-100 text-blue-700' :
-                  'bg-yellow-100 text-yellow-700'
-                }`}>
-                  {a.status}
-                </span>
-                <button
-                  onClick={() => handleRemove(a.id)}
-                  className="text-red-400 hover:text-red-600 text-xs"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {available.length > 0 && (
-        <div className="flex gap-3">
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        {/* Reviewer 1 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Reviewer 1</label>
           <select
-            value={selectedId}
-            onChange={e => setSelectedId(e.target.value)}
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={reviewer1Id}
+            onChange={e => setReviewer1Id(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Select reviewer to assign…</option>
-            {available.map(r => (
-              <option key={r.id} value={r.id}>
-                {r.firstname} {r.surname} ({r.email})
-              </option>
+            <option value="">— Unassigned —</option>
+            {reviewerOptions.map(r => (
+              <option key={r.id} value={r.id}>{r.label}</option>
             ))}
           </select>
-          <button
-            onClick={handleAssign}
-            disabled={!selectedId || saving}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-60"
-          >
-            {saving ? 'Assigning…' : 'Assign'}
-          </button>
+          {slot1 && (
+            <p className={`text-xs mt-1.5 font-medium ${statusColor(slot1.status)}`}>
+              Status: {slot1.status}
+            </p>
+          )}
         </div>
-      )}
-      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+
+        {/* Reviewer 2 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Reviewer 2</label>
+          <select
+            value={reviewer2Id}
+            onChange={e => setReviewer2Id(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">— Unassigned —</option>
+            {reviewerOptions
+              .filter(r => r.id !== reviewer1Id)
+              .map(r => (
+                <option key={r.id} value={r.id}>{r.label}</option>
+              ))}
+          </select>
+          {slot2 && (
+            <p className={`text-xs mt-1.5 font-medium ${statusColor(slot2.status)}`}>
+              Status: {slot2.status}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition disabled:opacity-60"
+      >
+        {saving ? 'Saving…' : 'Save Assignments'}
+      </button>
     </div>
   )
 }

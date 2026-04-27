@@ -9,6 +9,9 @@ export interface Profile {
   email: string
   firstname: string | null
   surname: string | null
+  professional_title: string | null
+  division: string | null
+  portfolio: string | null
   role: UserRole
   created_at: string
 }
