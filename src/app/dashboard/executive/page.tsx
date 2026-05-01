@@ -44,6 +44,20 @@ export default async function ExecutiveDashboard() {
     .eq('omit_record', false)
     .order('submitted_at', { ascending: false })
 
+  // Fetch assignments separately to avoid nested join RLS issues
+  const { data: allAssignments } = await supabase
+    .from('protocol_assignments')
+    .select('protocol_id, reviewer_id, status, reviewer:profiles(professional_title, firstname, surname)')
+    .order('assigned_at')
+
+  // Group assignments by protocol_id
+  const assignmentsByProtocol = new Map<string, any[]>()
+  for (const a of allAssignments ?? []) {
+    const list = assignmentsByProtocol.get(a.protocol_id) ?? []
+    list.push(a)
+    assignmentsByProtocol.set(a.protocol_id, list)
+  }
+
   const counts = {
     total: protocols?.length ?? 0,
     pending: protocols?.filter(p => p.final_outcome === 'pending').length ?? 0,
@@ -74,6 +88,10 @@ export default async function ExecutiveDashboard() {
       <div className="space-y-3">
         {protocols?.map((protocol: any) => {
           const outcome = (protocol.final_outcome ?? 'pending') as OutcomeStatus
+          const assignments: any[] = assignmentsByProtocol.get(protocol.id) ?? []
+          const submittedDate = protocol.submitted_at
+            ? new Date(protocol.submitted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+            : null
           return (
             <Link
               key={protocol.id}
@@ -85,8 +103,28 @@ export default async function ExecutiveDashboard() {
                   <p className="font-semibold text-gray-900 truncate">{protocol.title || 'Untitled Protocol'}</p>
                   <p className="text-sm text-gray-500 mt-0.5">
                     {protocol.serial_text} · {protocol.applicant_firstname} {protocol.applicant_surname}
+                    {submittedDate && <span className="ml-2 text-gray-400">· {submittedDate}</span>}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">{protocol.study_type} · {protocol.degree}</p>
+                  <p className="text-xs text-gray-400 mt-1">{protocol.study_type}{protocol.degree ? ` · ${protocol.degree}` : ''}</p>
+
+                  {/* Assigned reviewers */}
+                  <div className="flex items-center gap-2 mt-2">
+                    {assignments.length === 0 ? (
+                      <span className="text-xs text-gray-400 italic">No reviewers assigned</span>
+                    ) : (
+                      assignments.map((a: any) => {
+                        const r = a.reviewer
+                        const name = [r?.professional_title, r?.firstname, r?.surname].filter(Boolean).join(' ')
+                        const statusColor = a.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          a.status === 'in_review' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                        return (
+                          <span key={a.reviewer_id} className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor}`}>
+                            {name || 'Unknown'}
+                          </span>
+                        )
+                      })
+                    )}
+                  </div>
                 </div>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${outcomeBadge[outcome]}`}>
                   {outcomeLabel[outcome]}

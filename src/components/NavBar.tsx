@@ -28,6 +28,7 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
                 <>
                   <Link href="/dashboard/executive" className="text-gray-600 hover:text-blue-700 transition">Protocols</Link>
                   <Link href="/dashboard/executive/reviewers" className="text-gray-600 hover:text-blue-700 transition">Reviewers</Link>
+                  <Link href="/dashboard/executive/schedule" className="text-gray-600 hover:text-blue-700 transition">Schedule</Link>
                   {profile?.role === 'admin' && (
                     <Link href="/dashboard/admin" className="text-gray-600 hover:text-blue-700 transition">Executives</Link>
                   )}
@@ -39,6 +40,7 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500 capitalize">{profile?.role} · {profile?.firstname || profile?.email}</span>
+            <Link href="/dashboard/account" className="text-sm text-gray-500 hover:text-blue-700 transition">Account</Link>
             <button
               onClick={handleSignOut}
               className="text-sm text-gray-500 hover:text-red-600 transition"
