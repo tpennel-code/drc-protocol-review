@@ -26,7 +26,7 @@ export default async function ExecutiveDashboard() {
       .limit(10000),
     supabase
       .from('protocol_assignments')
-      .select('protocol_id, reviewer:profiles(professional_title, firstname, surname)'),
+      .select('protocol_id, reviewer:profiles!reviewer_id(professional_title, firstname, surname)'),
   ])
 
   const all = protocols ?? []

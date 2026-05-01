@@ -112,7 +112,10 @@ export default async function MinorAmendmentLetterPage({ params }: { params: Pro
         <PrintButton />
       </div>
 
-      <div className="letter-page max-w-4xl mx-auto bg-white border border-gray-200 rounded-2xl overflow-hidden print:border-0 print:rounded-none print:max-w-none print:shadow-none">
+      <div
+        className="letter-page max-w-4xl mx-auto bg-white border border-gray-200 rounded-2xl overflow-hidden print:border-0 print:rounded-none print:max-w-none print:shadow-none"
+        data-pdf-title={[protocol.applicant_surname, protocol.serial_text?.replace('/', '-'), 'Minor Amendment'].filter(Boolean).join(' ')}
+      >
 
         {/* Header */}
         <div className="letter-header flex items-center justify-between px-10 py-6 border-b-2 border-gray-800">

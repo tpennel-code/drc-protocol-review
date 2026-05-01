@@ -31,7 +31,7 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
 
   const { data: assignments } = await supabase
     .from('protocol_assignments')
-    .select('*, reviewer:profiles(*)')
+    .select('*, reviewer:profiles!reviewer_id(*)')
     .eq('protocol_id', id)
     .order('assigned_at')
 
@@ -115,8 +115,9 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
             {(protocol.final_outcome === 'approved' || protocol.final_outcome === 'fast_track_accepted') && (
               <>
                 <a href={`/dashboard/executive/protocols/${id}/approval-letter`}
-                  className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
-                  Generate Approval Letter
+                  className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  Approval Letter
                 </a>
                 <EmailApplicantButton protocolId={id} letterType="approved" label="Send Approval Email to Applicant" />
               </>
@@ -124,8 +125,9 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
             {protocol.final_outcome === 'minor_amendment' && (
               <>
                 <a href={`/dashboard/executive/protocols/${id}/minor-amendment-letter`}
-                  className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
-                  Generate Amendment Letter
+                  className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  Amendment Letter
                 </a>
                 <EmailApplicantButton protocolId={id} letterType="minor_amendment" label="Send Amendment Email to Applicant" />
               </>
@@ -133,8 +135,9 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
             {protocol.final_outcome === 'major_amendment' && (
               <>
                 <a href={`/dashboard/executive/protocols/${id}/amendment-letter`}
-                  className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
-                  Generate Amendment Letter
+                  className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  Amendment Letter
                 </a>
                 <EmailApplicantButton protocolId={id} letterType="major_amendment" label="Send Amendment Email to Applicant" />
               </>
@@ -142,7 +145,8 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
             {protocol.fast_tracked && protocol.final_outcome === 'fast_track_rejected' && (
               <>
                 <a href={`/dashboard/executive/protocols/${id}/fasttrack-rejection-letter`}
-                  className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
+                  className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                   Fast Track Rejection Letter
                 </a>
                 <EmailApplicantButton protocolId={id} letterType="fast_track_rejected" label="Send Fast Track Email to Applicant" />

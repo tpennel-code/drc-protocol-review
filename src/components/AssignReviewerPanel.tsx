@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Profile, ProtocolAssignment } from '@/lib/types'
+import { saveAssignments } from '@/lib/assignmentActions'
 
 export default function AssignReviewerPanel({
   protocolId,
@@ -19,6 +19,7 @@ export default function AssignReviewerPanel({
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
 
   const slot1 = assignments[0] ?? null
   const slot2 = assignments[1] ?? null
@@ -35,22 +36,15 @@ export default function AssignReviewerPanel({
   async function handleSave() {
     setSaving(true)
     setError('')
-    const supabase = createClient()
-
-    // Delete existing assignments and re-insert
-    await supabase.from('protocol_assignments').delete().eq('protocol_id', protocolId)
-
-    const toInsert = []
-    if (reviewer1Id) toInsert.push({ protocol_id: protocolId, reviewer_id: reviewer1Id, assigned_by: executiveId, status: 'pending' })
-    if (reviewer2Id && reviewer2Id !== reviewer1Id) toInsert.push({ protocol_id: protocolId, reviewer_id: reviewer2Id, assigned_by: executiveId, status: 'pending' })
-
-    if (toInsert.length > 0) {
-      const { error: err } = await supabase.from('protocol_assignments').insert(toInsert)
-      if (err) { setError(err.message); setSaving(false); return }
+    setSaved(false)
+    const result = await saveAssignments(protocolId, reviewer1Id, reviewer2Id)
+    if (result.error) {
+      setError(result.error)
+    } else {
+      setSaved(true)
+      router.refresh()
     }
-
     setSaving(false)
-    router.refresh()
   }
 
   const reviewerOptions = allReviewers.map(r => ({
@@ -113,6 +107,7 @@ export default function AssignReviewerPanel({
       </div>
 
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+      {saved && !error && <p className="text-sm text-green-600 mb-3">Saved successfully.</p>}
 
       <button
         onClick={handleSave}

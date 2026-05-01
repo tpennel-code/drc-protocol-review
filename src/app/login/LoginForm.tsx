@@ -65,7 +65,7 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
         src="/uct-logo-large.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none select-none absolute w-[200vw] top-[-30vh] object-contain"
+        className="pointer-events-none select-none absolute w-[250vw] top-[-30vh] object-contain"
         style={{ opacity: 0.06, left: 'calc(-50vw + 300px)' }}
       />
 

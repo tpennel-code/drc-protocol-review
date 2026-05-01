@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import PrintButton from './PrintButton'
+import EmailApplicantButton from '@/components/EmailApplicantButton'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -61,8 +62,7 @@ export default async function ApprovalLetterPage({ params }: { params: Promise<{
     <>
       <style>{`
         @media print {
-          body > :not(.letter-page) { display: none !important; }
-          body { margin: 0 !important; padding: 0 !important; background: white !important; }
+          body { margin: 0 !important; padding: 0 !important; }
 
           .letter-page {
             display: flex !important;
@@ -121,11 +121,17 @@ export default async function ApprovalLetterPage({ params }: { params: Promise<{
         <a href={`/dashboard/executive/protocols/${id}`} className="text-sm text-gray-500 hover:text-gray-700">
           ← Back to Protocol
         </a>
-        <PrintButton />
+        <div className="flex items-center gap-3">
+          <EmailApplicantButton protocolId={id} letterType="approved" />
+          <PrintButton />
+        </div>
       </div>
 
       {/* Letter page */}
-      <div className="letter-page max-w-4xl mx-auto bg-white border border-gray-200 rounded-2xl overflow-hidden print:border-0 print:rounded-none print:max-w-none print:shadow-none">
+      <div
+        className="letter-page max-w-4xl mx-auto bg-white border border-gray-200 rounded-2xl overflow-hidden print:border-0 print:rounded-none print:max-w-none print:shadow-none"
+        data-pdf-title={[protocol.applicant_surname, protocol.serial_text?.replace('/', '-'), 'Approved'].filter(Boolean).join(' ')}
+      >
 
         {/* UCT Header — logos + title */}
         <div className="letter-header flex items-center justify-between px-10 py-6 border-b-2 border-gray-800">
