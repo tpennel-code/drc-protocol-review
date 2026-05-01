@@ -11,6 +11,9 @@ const outcomeBadge: Record<OutcomeStatus, string> = {
   rejected: 'bg-red-100 text-red-800',
   rolled_over: 'bg-gray-100 text-gray-700',
   na: 'bg-gray-100 text-gray-500',
+  Unclassified: 'bg-purple-100 text-purple-700',
+  fast_track_accepted: 'bg-green-100 text-green-800',
+  fast_track_rejected: 'bg-orange-100 text-orange-800',
 }
 
 const outcomeLabel: Record<OutcomeStatus, string> = {
@@ -21,6 +24,9 @@ const outcomeLabel: Record<OutcomeStatus, string> = {
   rejected: 'Rejected',
   rolled_over: 'Rolled Over',
   na: 'N/A',
+  Unclassified: 'Unclassified',
+  fast_track_accepted: 'Fast Track Accepted',
+  fast_track_rejected: 'Fast Track Rejected',
 }
 
 export default async function ReviewerDashboard() {

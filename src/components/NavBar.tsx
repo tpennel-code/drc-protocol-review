@@ -39,6 +39,9 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500 capitalize">{profile?.role} · {profile?.firstname || profile?.email}</span>
+            <Link href="/dashboard/profile" className="text-sm text-gray-500 hover:text-blue-700 transition">
+              Profile
+            </Link>
             <button
               onClick={handleSignOut}
               className="text-sm text-gray-500 hover:text-red-600 transition"

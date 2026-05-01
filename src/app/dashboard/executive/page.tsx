@@ -1,27 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { OutcomeStatus } from '@/lib/types'
-
-const outcomeBadge: Record<OutcomeStatus, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  approved: 'bg-green-100 text-green-800',
-  minor_amendment: 'bg-blue-100 text-blue-800',
-  major_amendment: 'bg-orange-100 text-orange-800',
-  rejected: 'bg-red-100 text-red-800',
-  rolled_over: 'bg-gray-100 text-gray-700',
-  na: 'bg-gray-100 text-gray-500',
-}
-
-const outcomeLabel: Record<OutcomeStatus, string> = {
-  pending: 'Pending',
-  approved: 'Approved',
-  minor_amendment: 'Minor Amendment',
-  major_amendment: 'Major Amendment',
-  rejected: 'Rejected',
-  rolled_over: 'Rolled Over',
-  na: 'N/A',
-}
+import ProtocolList from '@/components/ProtocolList'
 
 export default async function ExecutiveDashboard() {
   const supabase = await createClient()
@@ -38,16 +17,33 @@ export default async function ExecutiveDashboard() {
     redirect('/dashboard/reviewer')
   }
 
-  const { data: protocols } = await supabase
-    .from('protocols')
-    .select('*')
-    .eq('omit_record', false)
-    .order('submitted_at', { ascending: false })
+  const [{ data: protocols }, { data: assignments }] = await Promise.all([
+    supabase
+      .from('protocols')
+      .select('*')
+      .eq('omit_record', false)
+      .order('serial_text', { ascending: false })
+      .limit(10000),
+    supabase
+      .from('protocol_assignments')
+      .select('protocol_id, reviewer:profiles(professional_title, firstname, surname)'),
+  ])
 
+  const all = protocols ?? []
   const counts = {
-    total: protocols?.length ?? 0,
-    pending: protocols?.filter(p => p.final_outcome === 'pending').length ?? 0,
-    approved: protocols?.filter(p => p.final_outcome === 'approved').length ?? 0,
+    total: all.length,
+    pending: all.filter(p => p.final_outcome === 'pending').length,
+    approved: all.filter(p => p.final_outcome === 'approved').length,
+  }
+
+  // Build map: protocol_id -> reviewer display names
+  const reviewersByProtocol: Record<string, string[]> = {}
+  for (const a of assignments ?? []) {
+    const r = a.reviewer as { professional_title: string | null; firstname: string | null; surname: string | null } | null
+    if (!r) continue
+    const name = [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' ')
+    if (!reviewersByProtocol[a.protocol_id]) reviewersByProtocol[a.protocol_id] = []
+    reviewersByProtocol[a.protocol_id].push(name)
   }
 
   return (
@@ -71,31 +67,7 @@ export default async function ExecutiveDashboard() {
         </div>
       </div>
 
-      <div className="space-y-3">
-        {protocols?.map((protocol: any) => {
-          const outcome = (protocol.final_outcome ?? 'pending') as OutcomeStatus
-          return (
-            <Link
-              key={protocol.id}
-              href={`/dashboard/executive/protocols/${protocol.id}`}
-              className="block bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-400 hover:shadow-sm transition"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{protocol.title || 'Untitled Protocol'}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {protocol.serial_text} · {protocol.applicant_firstname} {protocol.applicant_surname}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">{protocol.study_type} · {protocol.degree}</p>
-                </div>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${outcomeBadge[outcome]}`}>
-                  {outcomeLabel[outcome]}
-                </span>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+      <ProtocolList protocols={all} reviewersByProtocol={reviewersByProtocol} />
     </div>
   )
 }

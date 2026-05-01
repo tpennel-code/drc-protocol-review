@@ -21,6 +21,7 @@ export default async function ReviewersPage() {
     .from('profiles')
     .select('*')
     .order('surname')
+  // Pass all profiles (active + archived); ReviewerManager handles the toggle
 
   return (
     <div>

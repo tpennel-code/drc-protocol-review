@@ -1,36 +1,35 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { OutcomeStatus } from '@/lib/types'
 
-const outcomes: { value: OutcomeStatus; label: string }[] = [
+const standardOutcomes: { value: OutcomeStatus; label: string }[] = [
   { value: 'approved', label: 'Approved' },
   { value: 'minor_amendment', label: 'Minor Amendment' },
   { value: 'major_amendment', label: 'Major Amendment' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'rolled_over', label: 'Rolled Over' },
+  { value: 'Unclassified', label: 'Unclassified' },
   { value: 'na', label: 'N/A' },
+]
+
+const fastTrackOutcomes: { value: OutcomeStatus; label: string }[] = [
+  { value: 'fast_track_accepted', label: 'Fast Track Accepted' },
+  { value: 'fast_track_rejected', label: 'Fast Track Rejected' },
 ]
 
 export default function OutcomePanel({
   protocolId,
   currentOutcome,
-  applicantEmail,
-  protocolTitle,
-  executiveId,
+  fastTracked,
 }: {
   protocolId: string
   currentOutcome: OutcomeStatus
-  applicantEmail: string | null
-  protocolTitle: string | null
-  executiveId: string
+  fastTracked: boolean | null
 }) {
-  const router = useRouter()
   const [outcome, setOutcome] = useState<OutcomeStatus>(currentOutcome ?? 'pending')
   const [saving, setSaving] = useState(false)
-  const [sendEmail, setSendEmail] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
 
@@ -40,9 +39,11 @@ export default function OutcomePanel({
     setSuccess('')
     const supabase = createClient()
 
+    const setsApprovalDate = outcome === 'approved' || outcome === 'fast_track_accepted'
+
     const { error: updateErr } = await supabase
       .from('protocols')
-      .update({ final_outcome: outcome, approval_date: outcome === 'approved' ? new Date().toISOString() : null })
+      .update({ final_outcome: outcome, approval_date: setsApprovalDate ? new Date().toISOString() : null })
       .eq('id', protocolId)
 
     if (updateErr) {
@@ -51,32 +52,8 @@ export default function OutcomePanel({
       return
     }
 
-    if (sendEmail && applicantEmail && (outcome === 'approved' || outcome === 'rejected' || outcome === 'minor_amendment' || outcome === 'major_amendment')) {
-      const emailType = outcome === 'approved' ? 'approval' : outcome === 'rejected' ? 'rejection' : 'amendment'
-      await supabase.from('email_logs').insert({
-        protocol_id: protocolId,
-        sent_by: executiveId,
-        recipient_email: applicantEmail,
-        email_type: emailType,
-      })
-
-      const res = await fetch('/api/send-outcome-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ protocolId, outcome, applicantEmail, protocolTitle }),
-      })
-
-      if (!res.ok) {
-        setError('Outcome saved but email failed to send.')
-        setSaving(false)
-        router.refresh()
-        return
-      }
-    }
-
-    setSuccess('Outcome saved' + (sendEmail ? ' and email sent.' : '.'))
+    setSuccess('Outcome saved.')
     setSaving(false)
-    router.refresh()
   }
 
   return (
@@ -91,27 +68,25 @@ export default function OutcomePanel({
             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="pending">Pending</option>
-            {outcomes.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
+            {fastTracked && (
+              <optgroup label="Fast Track Decision">
+                {fastTrackOutcomes.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label={fastTracked ? 'Full Review' : undefined}>
+              {standardOutcomes.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </optgroup>
           </select>
+          {outcome === 'fast_track_rejected' && (
+            <p className="text-xs text-orange-600 mt-1">Protocol will proceed to full review at the next meeting.</p>
+          )}
         </div>
 
-        {applicantEmail && outcome !== 'pending' && outcome !== 'rolled_over' && outcome !== 'na' && (
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={sendEmail}
-              onChange={e => setSendEmail(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-700">
-              Send outcome email to <strong>{applicantEmail}</strong>
-            </span>
-          </label>
-        )}
-
-        {success && <p className="text-sm text-green-600">{success}</p>}
+{success && <p className="text-sm text-green-600">{success}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button

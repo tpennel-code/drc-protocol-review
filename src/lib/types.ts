@@ -2,7 +2,7 @@ export type UserRole = 'reviewer' | 'executive' | 'admin'
 
 export type ReviewRecommendation = 'approved' | 'minor_amendment' | 'major_amendment' | 'rejected'
 
-export type OutcomeStatus = 'pending' | 'approved' | 'minor_amendment' | 'major_amendment' | 'rejected' | 'rolled_over' | 'na'
+export type OutcomeStatus = 'pending' | 'approved' | 'minor_amendment' | 'major_amendment' | 'rejected' | 'rolled_over' | 'na' | 'Unclassified' | 'fast_track_accepted' | 'fast_track_rejected'
 
 export interface Profile {
   id: string
@@ -13,6 +13,8 @@ export interface Profile {
   division: string | null
   portfolio: string | null
   role: UserRole
+  signature_url: string | null
+  archived: boolean
   created_at: string
 }
 

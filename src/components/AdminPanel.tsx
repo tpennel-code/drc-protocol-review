@@ -16,12 +16,29 @@ const roleColors: Record<UserRole, string> = {
 export default function AdminPanel({ users, currentUserId }: { users: Profile[]; currentUserId: string }) {
   const router = useRouter()
   const [saving, setSaving] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   async function handleRoleChange(userId: string, newRole: UserRole) {
     setSaving(userId)
     const supabase = createClient()
     await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
     setSaving(null)
+    router.refresh()
+  }
+
+  async function handleDelete(userId: string, name: string) {
+    if (!confirm(`Delete ${name}? This cannot be undone.`)) return
+    setDeleting(userId)
+    const res = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json()
+      alert(error ?? 'Failed to delete user.')
+    }
+    setDeleting(null)
     router.refresh()
   }
 
@@ -34,6 +51,7 @@ export default function AdminPanel({ users, currentUserId }: { users: Profile[];
             <th className="text-left px-6 py-3 font-medium text-gray-500">Email</th>
             <th className="text-left px-6 py-3 font-medium text-gray-500">Role</th>
             <th className="text-left px-6 py-3 font-medium text-gray-500">Change Role</th>
+            <th className="px-6 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -61,6 +79,17 @@ export default function AdminPanel({ users, currentUserId }: { users: Profile[];
                       <option key={r} value={r} className="capitalize">{r}</option>
                     ))}
                   </select>
+                )}
+              </td>
+              <td className="px-6 py-4 text-right">
+                {u.id !== currentUserId && (
+                  <button
+                    disabled={deleting === u.id}
+                    onClick={() => handleDelete(u.id, `${u.firstname} ${u.surname}`)}
+                    className="text-xs text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+                  >
+                    {deleting === u.id ? 'Deleting…' : 'Delete'}
+                  </button>
                 )}
               </td>
             </tr>

@@ -13,6 +13,28 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
   const [surname, setSurname] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+
+  async function handleForgotPassword() {
+    const reviewer = reviewers.find(r => r.id === selectedId)
+    if (!reviewer) {
+      setError('Please select your name first.')
+      return
+    }
+    setResetLoading(true)
+    setError('')
+    const supabase = createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(reviewer.email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    })
+    setResetLoading(false)
+    if (error) {
+      setError('Failed to send reset email. Please try again.')
+    } else {
+      setResetSent(true)
+    }
+  }
 
   async function signIn(email: string, password: string) {
     setLoading(true)
@@ -36,8 +58,18 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md space-y-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-gray-50 overflow-hidden">
+
+      {/* Watermark */}
+      <img
+        src="/uct-logo-large.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none select-none absolute w-[200vw] top-[-30vh] object-contain"
+        style={{ opacity: 0.06, left: 'calc(-50vw + 300px)' }}
+      />
+
+      <div className="relative w-full max-w-md space-y-4">
 
         {/* Login form */}
         <div className="bg-white rounded-2xl shadow-lg p-10">
@@ -75,6 +107,9 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
+            {resetSent && (
+              <p className="text-sm text-green-600">Password reset email sent. Check your inbox.</p>
+            )}
 
             <button
               type="submit"
@@ -83,6 +118,17 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
             >
               {loading ? 'Signing in…' : 'Sign In'}
             </button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={resetLoading || resetSent}
+                className="text-sm text-blue-600 hover:underline disabled:opacity-50"
+              >
+                {resetLoading ? 'Sending…' : 'Forgot password?'}
+              </button>
+            </div>
           </form>
         </div>
       </div>

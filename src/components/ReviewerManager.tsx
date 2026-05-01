@@ -63,16 +63,6 @@ function ReviewerForm({
         </select>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-        <select
-          value={form.role}
-          onChange={e => onChange({ ...form, role: e.target.value as UserRole })}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {ROLES.map(r => <option key={r} value={r} className="capitalize">{r}</option>)}
-        </select>
-      </div>
-      <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">First Name</label>
         <input
           value={form.firstname}
@@ -142,11 +132,24 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
   const [editForm, setEditForm] = useState<FormData>(emptyForm)
   const [editError, setEditError] = useState('')
   const [editSaving, setEditSaving] = useState(false)
+  const [sigUploading, setSigUploading] = useState(false)
+  const [sigPreview, setSigPreview] = useState<string | null>(null)
 
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [archiving, setArchiving] = useState<string | null>(null)
+
+  async function handleArchiveToggle(r: Profile) {
+    setArchiving(r.id)
+    const supabase = createClient()
+    await supabase.from('profiles').update({ archived: !r.archived }).eq('id', r.id)
+    setArchiving(null)
+    router.refresh()
+  }
 
   const filtered = reviewers.filter(r => {
+    if (r.archived !== showArchived) return false
     const q = search.toLowerCase()
     return (
       r.firstname?.toLowerCase().includes(q) ||
@@ -168,7 +171,30 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
       portfolio: r.portfolio ?? '',
       role: r.role,
     })
+    setSigPreview(r.signature_url ?? null)
     setEditError('')
+  }
+
+  async function handleSignatureUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!editTarget) return
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSigUploading(true)
+    const supabase = createClient()
+    const path = `${editTarget.id}.${file.name.split('.').pop()}`
+    const { error: uploadError } = await supabase.storage
+      .from('signatures')
+      .upload(path, file, { upsert: true })
+    if (uploadError) {
+      setEditError('Signature upload failed: ' + uploadError.message)
+      setSigUploading(false)
+      return
+    }
+    const { data: { publicUrl } } = supabase.storage.from('signatures').getPublicUrl(path)
+    await supabase.from('profiles').update({ signature_url: publicUrl }).eq('id', editTarget.id)
+    setSigPreview(publicUrl)
+    setSigUploading(false)
+    router.refresh()
   }
 
   async function handleFieldChange(userId: string, field: string, value: string) {
@@ -248,14 +274,26 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    const supabase = createClient()
-    // Remove profile — user disappears from all lists and assignments
-    await supabase.from('protocol_assignments').delete().eq('reviewer_id', deleteTarget.id)
-    await supabase.from('reviews').delete().eq('reviewer_id', deleteTarget.id)
-    await supabase.from('profiles').delete().eq('id', deleteTarget.id)
-    setDeleting(false)
-    setDeleteTarget(null)
-    router.refresh()
+    try {
+      const res = await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: deleteTarget.id }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        let msg = 'Failed to delete user.'
+        try { msg = JSON.parse(text).error ?? msg } catch {}
+        alert(msg)
+      } else {
+        router.refresh()
+      }
+    } catch (err) {
+      alert('Delete failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
   }
 
   async function handleCSVImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -329,7 +367,7 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
       {/* Edit Modal */}
       {editTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Edit Reviewer</h2>
             <form onSubmit={handleEdit} className="space-y-4">
               <ReviewerForm form={editForm} onChange={setEditForm} />
@@ -345,6 +383,31 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
                 </button>
               </div>
             </form>
+
+            {/* Signature upload */}
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <p className="text-xs font-medium text-gray-600 mb-3">Signature</p>
+              {sigPreview ? (
+                <div className="mb-3 p-3 border border-gray-200 rounded-lg bg-gray-50 inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={sigPreview} alt="Signature" className="h-20 object-contain" />
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 mb-3">No signature uploaded yet.</p>
+              )}
+              <label className="cursor-pointer">
+                <span className={`inline-block text-xs font-medium px-4 py-2 rounded-lg border transition ${sigUploading ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-500 border-gray-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+                  {sigUploading ? 'Uploading…' : sigPreview ? 'Replace Signature' : 'Upload Signature'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  disabled={sigUploading}
+                  onChange={handleSignatureUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
           </div>
         </div>
       )}
@@ -392,11 +455,18 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <p className="text-sm font-medium text-gray-700">{filtered.length} members</p>
+            <p className="text-sm font-medium text-gray-700">{filtered.length} {showArchived ? 'archived' : 'active'}</p>
+            {!showArchived && (
+              <button
+                onClick={() => { setAddForm(emptyForm); setAddError(''); setShowAdd(true) }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                + Add Reviewer
+              </button>
+            )}
             <button
-              onClick={() => { setAddForm(emptyForm); setAddError(''); setShowAdd(true) }}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition">
-              + Add Reviewer
+              onClick={() => setShowArchived(v => !v)}
+              className="text-sm text-gray-500 hover:text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg transition">
+              {showArchived ? 'Show Active' : 'Show Archived'}
             </button>
           </div>
           <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
@@ -449,19 +519,23 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
                     </select>
                   </td>
                   <td className="px-4 py-3">
-                    <select value={r.role} onChange={e => handleFieldChange(r.id, 'role', e.target.value)}
-                      disabled={saving === r.id + 'role'}
-                      className={`rounded-lg border px-2 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 capitalize ${roleColors[r.role]} border-transparent`}>
-                      {ROLES.map(role => (
-                        <option key={role} value={role} className="bg-white text-gray-900 capitalize">{role}</option>
-                      ))}
-                    </select>
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${roleColors[r.role]}`}>
+                      {r.role}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(r)}
-                        className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-50 transition">
-                        Edit
+                      {!r.archived && (
+                        <button onClick={() => openEdit(r)}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-50 transition">
+                          Edit
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleArchiveToggle(r)}
+                        disabled={archiving === r.id}
+                        className="text-xs text-amber-600 hover:text-amber-800 font-medium px-2 py-1 rounded hover:bg-amber-50 transition disabled:opacity-50">
+                        {archiving === r.id ? '…' : r.archived ? 'Unarchive' : 'Archive'}
                       </button>
                       <button onClick={() => setDeleteTarget(r)}
                         className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition">
