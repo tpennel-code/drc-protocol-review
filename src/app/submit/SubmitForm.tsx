@@ -97,7 +97,7 @@ export default function SubmitForm() {
   const [error, setError]                   = useState('')
   const [showModal, setShowModal]           = useState(false)
 
-  function fillTestData() {
+  async function fillTestData() {
     setFirstname('Carl-Adriaan')
     setSurname('Hugo')
     setEmail('cahugo6@gmail.com')
@@ -111,16 +111,34 @@ export default function SubmitForm() {
     setSubmissionType('First Submission')
     setChecklist(true)
 
-    const attachFile = (ref: React.RefObject<HTMLInputElement>, name: string, type: string) => {
+    const attachFetched = async (
+      ref: React.RefObject<HTMLInputElement>,
+      url: string,
+      filename: string,
+      type: string,
+    ) => {
       if (!ref.current) return
+      const res = await fetch(url)
+      const blob = await res.blob()
       const dt = new DataTransfer()
-      dt.items.add(new File(['test file content'], name, { type }))
+      dt.items.add(new File([blob], filename, { type }))
       ref.current.files = dt.files
     }
-    attachFile(protocolFileRef, 'ft-hugo-renal-transplant.docx',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-    attachFile(datasheetFileRef, 'ft-hugo-renal-transplant-data-sheet.xlsx',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    await Promise.all([
+      attachFetched(
+        protocolFileRef,
+        '/test-files/test-protocol.docx',
+        'ft-hugo-renal-transplant.docx',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ),
+      attachFetched(
+        datasheetFileRef,
+        '/test-files/test-datasheet.xlsx',
+        'ft-hugo-renal-transplant-data-sheet.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ),
+    ])
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -236,7 +254,7 @@ export default function SubmitForm() {
       <span className="text-xs text-amber-700 font-medium">Sandbox / testing mode</span>
       <button
         type="button"
-        onClick={fillTestData}
+        onClick={() => { fillTestData() }}
         className="text-xs font-medium text-amber-800 border border-amber-300 bg-white px-3 py-1.5 rounded-lg hover:bg-amber-50 transition"
       >
         Autofill test data
