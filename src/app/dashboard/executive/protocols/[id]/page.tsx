@@ -4,6 +4,7 @@ import AssignReviewerPanel from '@/components/AssignReviewerPanel'
 import OutcomePanel from '@/components/OutcomePanel'
 import ReviewForm from '@/components/ReviewForm'
 import EmailApplicantButton from '@/components/EmailApplicantButton'
+import MeetingDatePicker from '@/components/MeetingDatePicker'
 
 export default async function ExecutiveProtocolPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -46,6 +47,12 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
     .in('role', ['reviewer', 'executive', 'admin'])
     .eq('archived', false)
     .order('surname')
+
+  const { data: meetingDatesRows } = await supabase
+    .from('meeting_dates')
+    .select('meeting_date')
+    .order('meeting_date')
+  const meetingDates = (meetingDatesRows ?? []).map(r => String(r.meeting_date))
 
   // Ordered list for prev/next navigation
   const { data: allProtocols } = await supabase
@@ -202,7 +209,13 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
           </div>
           <div>
             <dt className="font-medium text-gray-500">Meeting Date</dt>
-            <dd className="text-gray-900">{protocol.meeting_date ? String(protocol.meeting_date).replace(/[T ].*/, '') : '—'}</dd>
+            <dd>
+              <MeetingDatePicker
+                protocolId={id}
+                current={protocol.meeting_date ? String(protocol.meeting_date).replace(/[T ].*/, '') : null}
+                meetingDates={meetingDates}
+              />
+            </dd>
           </div>
           <div>
             <dt className="font-medium text-gray-500">Supervisor</dt>

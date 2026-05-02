@@ -17,7 +17,7 @@ export default async function ExecutiveDashboard() {
     redirect('/dashboard/reviewer')
   }
 
-  const [{ data: protocols }, { data: assignments }] = await Promise.all([
+  const [{ data: protocols }, { data: assignments }, { data: reviews }] = await Promise.all([
     supabase
       .from('protocols')
       .select('*')
@@ -26,7 +26,10 @@ export default async function ExecutiveDashboard() {
       .limit(10000),
     supabase
       .from('protocol_assignments')
-      .select('protocol_id, reviewer:profiles!reviewer_id(professional_title, firstname, surname)'),
+      .select('protocol_id, reviewer_id, reviewer:profiles!reviewer_id(professional_title, firstname, surname)'),
+    supabase
+      .from('reviews')
+      .select('protocol_id, reviewer_id'),
   ])
 
   const all = protocols ?? []
@@ -36,14 +39,18 @@ export default async function ExecutiveDashboard() {
     approved: all.filter(p => p.final_outcome === 'approved').length,
   }
 
-  // Build map: protocol_id -> reviewer display names
-  const reviewersByProtocol: Record<string, string[]> = {}
+  // Set of "<protocol_id>:<reviewer_id>" pairs that have a submitted review
+  const submittedSet = new Set<string>()
+  for (const r of reviews ?? []) submittedSet.add(`${r.protocol_id}:${r.reviewer_id}`)
+
+  const reviewersByProtocol: Record<string, { name: string; submitted: boolean }[]> = {}
   for (const a of assignments ?? []) {
     const r = a.reviewer as { professional_title: string | null; firstname: string | null; surname: string | null } | null
     if (!r) continue
     const name = [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' ')
+    const submitted = submittedSet.has(`${a.protocol_id}:${a.reviewer_id}`)
     if (!reviewersByProtocol[a.protocol_id]) reviewersByProtocol[a.protocol_id] = []
-    reviewersByProtocol[a.protocol_id].push(name)
+    reviewersByProtocol[a.protocol_id].push({ name, submitted })
   }
 
   return (

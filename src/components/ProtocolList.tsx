@@ -60,10 +60,11 @@ type Protocol = {
   degree: string | null
   submitted_at: string | null
   approval_date: string | null
+  meeting_date: string | null
   final_outcome: OutcomeStatus
 }
 
-export default function ProtocolList({ protocols, reviewersByProtocol = {} }: { protocols: Protocol[], reviewersByProtocol?: Record<string, string[]> }) {
+export default function ProtocolList({ protocols, reviewersByProtocol = {} }: { protocols: Protocol[], reviewersByProtocol?: Record<string, { name: string; submitted: boolean }[]> }) {
   const [statusFilter, setStatusFilter] = useState<OutcomeStatus | 'all'>('all')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -163,22 +164,27 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {} }: { 
                     <p className="text-xs text-gray-400">
                       {[protocol.study_type, protocol.degree].filter(Boolean).join(' · ')}
                       {protocol.submitted_at && (
-                        <span className="ml-2">
-                          · Submitted {fmtDate(protocol.submitted_at)}
-                        </span>
+                        <span className="ml-2">· Submitted <span className="text-gray-600">{fmtDate(protocol.submitted_at)}</span></span>
+                      )}
+                      {protocol.meeting_date && (
+                        <span className="ml-2">· Meeting <span className="text-blue-600">{fmtDate(String(protocol.meeting_date).replace(/[T ].*/, ''))}</span></span>
                       )}
                       {outcome === 'approved' && protocol.approval_date && (
-                        <span className="ml-2 text-green-600">
-                          · Approved {fmtDate(protocol.approval_date)}
-                        </span>
+                        <span className="ml-2">· Approved <span className="text-green-600">{fmtDate(protocol.approval_date)}</span></span>
                       )}
                     </p>
                     <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
                       {(reviewersByProtocol[protocol.id]?.length ?? 0) > 0 ? (
-                        reviewersByProtocol[protocol.id].map((name, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                        reviewersByProtocol[protocol.id].map((r, i) => (
+                          <span
+                            key={i}
+                            title={r.submitted ? 'Review submitted' : 'Review pending'}
+                            className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                              r.submitted ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                            }`}
+                          >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                            {name}
+                            {r.name}
                           </span>
                         ))
                       ) : (
