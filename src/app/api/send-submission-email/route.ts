@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-
-// Sender: noreply@sdrc.uct.ac.za — domain must be verified in the Resend dashboard.
-
-const ADMIN_EMAIL = 'tpennel@gmail.com'
+import { createClient } from '@supabase/supabase-js'
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -16,19 +13,34 @@ function formatDate(iso: string) {
   return `${days[d.getDay()]}, ${dd}/${mm}/${yyyy} - ${hh}:${min}`
 }
 
+async function downloadAttachment(
+  supabase: ReturnType<typeof createClient>,
+  storagePath: string | null,
+  filename: string,
+) {
+  if (!storagePath) return null
+  const { data, error } = await supabase.storage
+    .from('protocol-submissions')
+    .download(storagePath)
+  if (error || !data) return null
+  const buf = Buffer.from(await data.arrayBuffer())
+  return { filename, content: buf }
+}
+
 export async function POST(req: Request) {
   const body = await req.json()
   const {
     submittedAt, firstname, surname, email, profTitle,
     fastTrack, protocolTitle, fileNaming,
     protocolFile, datasheetFile, supplementaryFile,
+    protocolFilePath, datasheetFilePath, supplementaryFilePath,
     studyType, degree, supervisor, submissionType,
     resubNumber, checklist,
   } = body
 
   const dateStr = formatDate(submittedAt)
-  const fastTrackLabel   = fastTrack === 'yes' ? 'Fast Track' : 'Not for Fast Track'
-  const supervisorLabel  = supervisor === 'approved'
+  const fastTrackLabel  = fastTrack === 'yes' ? 'Fast Track' : 'Not for Fast Track'
+  const supervisorLabel = supervisor === 'approved'
     ? 'Supervisor has read and approved protocol before submission'
     : 'N/A — This protocol does not have a supervisor attached'
 
@@ -135,14 +147,37 @@ Data Review Committee · University of Cape Town
     return NextResponse.json({ success: true })
   }
 
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!,
+  )
+
+  // Fetch all exec/admin emails to CC
+  const { data: execProfiles } = await supabaseAdmin
+    .from('profiles')
+    .select('email')
+    .in('role', ['executive', 'admin'])
+
+  const ccEmails = (execProfiles ?? [])
+    .map(p => p.email as string | null)
+    .filter((e): e is string => !!e && !e.endsWith('@drc.local'))
+
+  // Download files for attachments
+  const attachments = (await Promise.all([
+    downloadAttachment(supabaseAdmin, protocolFilePath ?? null, protocolFile || 'protocol.docx'),
+    downloadAttachment(supabaseAdmin, datasheetFilePath ?? null, datasheetFile || 'datasheet'),
+    downloadAttachment(supabaseAdmin, supplementaryFilePath ?? null, supplementaryFile || 'supplementary'),
+  ])).filter((a): a is { filename: string; content: Buffer } => a !== null)
+
   const resend = new Resend(apiKey)
   const { error } = await resend.emails.send({
     from: 'No Reply <noreply@sdrc.uct.ac.za>',
     to: email,
-    cc: ADMIN_EMAIL,
+    cc: ccEmails.length > 0 ? ccEmails : undefined,
     subject,
     text: textBody,
     html: htmlBody,
+    attachments: attachments.length > 0 ? attachments : undefined,
   })
 
   if (error) console.error('Resend error:', error)
