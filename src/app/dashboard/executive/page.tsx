@@ -94,7 +94,7 @@ export default async function ExecutiveDashboard() {
         <h1 className="text-2xl font-bold text-gray-900">Executive Dashboard</h1>
       </div>
       <ExecutiveDashboardTabs
-        protocolsContent={<>{statsCards}<ProtocolList protocols={all} reviewersByProtocol={reviewersByProtocol} /></>}
+        protocolsContent={<>{statsCards}<ProtocolList protocols={all} reviewersByProtocol={reviewersByProtocol} isAdmin={profile.role === 'admin'} /></>}
         meetingDatesContent={<MeetingDateManager rows={meetingRows} />}
       />
     </div>

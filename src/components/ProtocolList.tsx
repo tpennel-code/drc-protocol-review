@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { OutcomeStatus } from '@/lib/types'
+import DeleteProtocolButton from '@/components/DeleteProtocolButton'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 function fmtDate(iso: string) {
@@ -64,7 +65,7 @@ type Protocol = {
   final_outcome: OutcomeStatus
 }
 
-export default function ProtocolList({ protocols, reviewersByProtocol = {} }: { protocols: Protocol[], reviewersByProtocol?: Record<string, { name: string; submitted: boolean }[]> }) {
+export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAdmin = false }: { protocols: Protocol[], reviewersByProtocol?: Record<string, { name: string; submitted: boolean }[]>, isAdmin?: boolean }) {
   const [statusFilter, setStatusFilter] = useState<OutcomeStatus | 'all'>('all')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -149,55 +150,65 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {} }: { 
         {filtered.map(protocol => {
           const outcome = (protocol.final_outcome ?? 'pending') as OutcomeStatus
           return (
-            <Link
-              key={protocol.id}
-              href={`/dashboard/executive/protocols/${protocol.id}`}
-              className="block bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-400 hover:shadow-sm transition"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{protocol.title || 'Untitled Protocol'}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {protocol.serial_text} · {protocol.applicant_firstname} {protocol.applicant_surname}
-                  </p>
-                  <div className="flex items-center justify-between gap-3 mt-1">
-                    <p className="text-xs text-gray-400">
-                      {[protocol.study_type, protocol.degree].filter(Boolean).join(' · ')}
-                      {protocol.submitted_at && (
-                        <span className="ml-2">· Submitted <span className="text-gray-600">{fmtDate(protocol.submitted_at)}</span></span>
-                      )}
-                      {protocol.meeting_date && (
-                        <span className="ml-2">· Meeting <span className="text-blue-600">{fmtDate(String(protocol.meeting_date).replace(/[T ].*/, ''))}</span></span>
-                      )}
-                      {outcome === 'approved' && protocol.approval_date && (
-                        <span className="ml-2">· Approved <span className="text-green-600">{fmtDate(protocol.approval_date)}</span></span>
-                      )}
+            <div key={protocol.id} className="flex items-stretch bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-sm transition">
+              <Link
+                href={`/dashboard/executive/protocols/${protocol.id}`}
+                className="flex-1 block p-5 min-w-0"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{protocol.title || 'Untitled Protocol'}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {protocol.serial_text} · {protocol.applicant_firstname} {protocol.applicant_surname}
                     </p>
-                    <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
-                      {(reviewersByProtocol[protocol.id]?.length ?? 0) > 0 ? (
-                        reviewersByProtocol[protocol.id].map((r, i) => (
-                          <span
-                            key={i}
-                            title={r.submitted ? 'Review submitted' : 'Review pending'}
-                            className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
-                              r.submitted ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
-                            }`}
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                            {r.name}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">No reviewers assigned</span>
-                      )}
+                    <div className="flex items-center justify-between gap-3 mt-1">
+                      <p className="text-xs text-gray-400">
+                        {[protocol.study_type, protocol.degree].filter(Boolean).join(' · ')}
+                        {protocol.submitted_at && (
+                          <span className="ml-2">· Submitted <span className="text-gray-600">{fmtDate(protocol.submitted_at)}</span></span>
+                        )}
+                        {protocol.meeting_date && (
+                          <span className="ml-2">· Meeting <span className="text-blue-600">{fmtDate(String(protocol.meeting_date).replace(/[T ].*/, ''))}</span></span>
+                        )}
+                        {outcome === 'approved' && protocol.approval_date && (
+                          <span className="ml-2">· Approved <span className="text-green-600">{fmtDate(protocol.approval_date)}</span></span>
+                        )}
+                      </p>
+                      <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+                        {(reviewersByProtocol[protocol.id]?.length ?? 0) > 0 ? (
+                          reviewersByProtocol[protocol.id].map((r, i) => (
+                            <span
+                              key={i}
+                              title={r.submitted ? 'Review submitted' : 'Review pending'}
+                              className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                                r.submitted ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                              }`}
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                              {r.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">No reviewers assigned</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${outcomeBadge[outcome]}`}>
+              </Link>
+              <div className="flex flex-col items-end justify-start gap-2 p-3 shrink-0">
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${outcomeBadge[outcome]}`}>
                   {outcomeLabel[outcome]}
                 </span>
+                {isAdmin && (
+                  <DeleteProtocolButton
+                    protocolId={protocol.id}
+                    protocolTitle={protocol.title || 'Untitled Protocol'}
+                    compact
+                  />
+                )}
               </div>
-            </Link>
+            </div>
           )
         })}
         {filtered.length === 0 && (
