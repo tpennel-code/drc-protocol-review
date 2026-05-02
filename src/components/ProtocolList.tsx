@@ -71,17 +71,17 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   function sortKey(p: Protocol): number {
-    if (p.submitted_at) return new Date(p.submitted_at).getTime()
+    // Serial-text protocols: yr=2026,seq=371 → 2.026e12, above all real timestamps
     if (p.serial_text) {
       const parts = p.serial_text.split('/')
       if (parts.length === 2) {
         const yr = parseInt(parts[0], 10)
         const seq = parseInt(parts[1], 10)
-        // Keep well below real timestamps (~1.8e12) so actual submissions always
-        // sort above imported records when descending. yr=2026,seq=371 → ~2e9.
-        if (!isNaN(yr) && !isNaN(seq)) return yr * 1e6 + seq
+        if (!isNaN(yr) && !isNaN(seq)) return yr * 1e9 + seq * 1000
       }
     }
+    // New submission without a serial number yet — float above all serial protocols
+    if (p.submitted_at) return 3e12
     return 0
   }
 
