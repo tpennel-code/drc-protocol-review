@@ -71,7 +71,7 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   function sortKey(p: Protocol): number {
-    // Serial-text protocols: yr=2026,seq=371 → 2.026e12, above all real timestamps
+    // Serial-text protocols: yr=2026,seq=371 → 2.026e12
     if (p.serial_text) {
       const parts = p.serial_text.split('/')
       if (parts.length === 2) {
@@ -80,8 +80,8 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
         if (!isNaN(yr) && !isNaN(seq)) return yr * 1e9 + seq * 1000
       }
     }
-    // New submission without a serial number yet — float above all serial protocols
-    if (p.submitted_at) return 3e12
+    // No serial number — sort by actual submission date
+    if (p.submitted_at) return new Date(p.submitted_at).getTime()
     return 0
   }
 

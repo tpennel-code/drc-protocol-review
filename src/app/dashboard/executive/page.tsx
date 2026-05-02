@@ -24,7 +24,8 @@ export default async function ExecutiveDashboard() {
       .from('protocols')
       .select('*')
       .eq('omit_record', false)
-      .order('serial_text', { ascending: false })
+      .order('serial_text', { ascending: false, nullsFirst: false })
+      .order('submitted_at', { ascending: false, nullsFirst: false })
       .limit(10000),
     supabase
       .from('protocol_assignments')
