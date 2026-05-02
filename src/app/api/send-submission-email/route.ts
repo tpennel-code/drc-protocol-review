@@ -172,7 +172,7 @@ Data Review Committee · University of Cape Town
 
   const resend = new Resend(apiKey)
   const { error } = await resend.emails.send({
-    from: 'No Reply <noreply@sdrc.uct.ac.za>',
+    from: 'DRC <onboarding@resend.dev>',
     to: email,
     cc: ccEmails.length > 0 ? ccEmails : undefined,
     subject,
