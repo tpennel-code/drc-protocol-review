@@ -98,6 +98,32 @@ export default function SubmitForm() {
   const [error, setError]                   = useState('')
   const [showModal, setShowModal]           = useState(false)
 
+  function fillTestData() {
+    setFirstname('Carl-Adriaan')
+    setSurname('Hugo')
+    setEmail('cahugo6@gmail.com')
+    setProfTitle('Dr')
+    setFastTrack('yes')
+    setProtocolTitle('The Impact of Donor Vessel Multiplicity and Kidney Laterality on Donor Outcomes in a South African Cohort')
+    setFileNaming(true)
+    setStudyType('Retrospective Cohort')
+    setDegree('Non-degree purpose')
+    setSupervisor('approved')
+    setSubmissionType('First Submission')
+    setChecklist(true)
+
+    const attachFile = (ref: React.RefObject<HTMLInputElement>, name: string, type: string) => {
+      if (!ref.current) return
+      const dt = new DataTransfer()
+      dt.items.add(new File(['test file content'], name, { type }))
+      ref.current.files = dt.files
+    }
+    attachFile(protocolFileRef, 'ft-hugo-renal-transplant.docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    attachFile(datasheetFileRef, 'ft-hugo-renal-transplant-data-sheet.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
@@ -206,6 +232,17 @@ export default function SubmitForm() {
         </div>
       </div>
     )}
+
+    <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-2">
+      <span className="text-xs text-amber-700 font-medium">Sandbox / testing mode</span>
+      <button
+        type="button"
+        onClick={fillTestData}
+        className="text-xs font-medium text-amber-800 border border-amber-300 bg-white px-3 py-1.5 rounded-lg hover:bg-amber-50 transition"
+      >
+        Autofill test data
+      </button>
+    </div>
 
     <form onSubmit={handleSubmit} className="space-y-8">
 

@@ -153,6 +153,7 @@ Data Review Committee · University of Cape Town
   )
 
   // Fetch all exec/admin emails to CC
+  // TODO: remove the email filter below when ready to notify all execs in production
   const { data: execProfiles } = await supabaseAdmin
     .from('profiles')
     .select('email')
@@ -160,7 +161,7 @@ Data Review Committee · University of Cape Town
 
   const ccEmails = (execProfiles ?? [])
     .map(p => p.email as string | null)
-    .filter((e): e is string => !!e && !e.endsWith('@drc.local'))
+    .filter((e): e is string => e === 'tpennel@gmail.com')
 
   // Download files for attachments
   const attachments = (await Promise.all([
