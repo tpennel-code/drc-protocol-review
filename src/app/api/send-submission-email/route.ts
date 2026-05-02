@@ -161,7 +161,7 @@ Data Review Committee · University of Cape Town
 
   const ccEmails = (execProfiles ?? [])
     .map(p => p.email as string | null)
-    .filter((e): e is string => e === 'tpennel@gmail.com')
+    .filter((e): e is string => e === 'tim.pennel@uct.ac.za')
 
   // Download files for attachments
   const attachments = (await Promise.all([
