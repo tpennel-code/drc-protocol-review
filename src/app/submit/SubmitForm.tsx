@@ -244,7 +244,7 @@ export default function SubmitForm() {
             onClick={() => window.location.reload()}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl text-sm transition"
           >
-            Submit Another Protocol
+            Done
           </button>
         </div>
       </div>
