@@ -76,9 +76,9 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {} }: { 
       if (parts.length === 2) {
         const yr = parseInt(parts[0], 10)
         const seq = parseInt(parts[1], 10)
-        // Scale to timestamp magnitude so serial-derived keys sort correctly
-        // relative to real timestamps (~1.7e12). yr=2024,seq=1 → 2.024e12.
-        if (!isNaN(yr) && !isNaN(seq)) return yr * 1e9 + seq * 1000
+        // Keep well below real timestamps (~1.8e12) so actual submissions always
+        // sort above imported records when descending. yr=2026,seq=371 → ~2e9.
+        if (!isNaN(yr) && !isNaN(seq)) return yr * 1e6 + seq
       }
     }
     return 0
