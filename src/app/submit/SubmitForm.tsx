@@ -62,14 +62,13 @@ FileField.displayName = 'FileField'
 // ── upload helper ────────────────────────────────────────────────────────────
 
 async function uploadFile(file: File, folder: string): Promise<string> {
-  const supabase = createClient()
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const path = `${folder}/${Date.now()}-${safeName}`
-  const { error } = await supabase.storage
-    .from('protocol-submissions')
-    .upload(path, file, { upsert: false })
-  if (error) throw new Error(`File upload failed: ${error.message}`)
-  return path
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('folder', folder)
+  const res = await fetch('/api/upload-protocol-file', { method: 'POST', body: formData })
+  const json = await res.json()
+  if (!res.ok) throw new Error(`File upload failed: ${json.error}`)
+  return json.path
 }
 
 // ── main form ────────────────────────────────────────────────────────────────
