@@ -5,6 +5,7 @@ import OutcomePanel from '@/components/OutcomePanel'
 import ReviewForm from '@/components/ReviewForm'
 import EmailApplicantButton from '@/components/EmailApplicantButton'
 import MeetingDatePicker from '@/components/MeetingDatePicker'
+import DeleteProtocolButton from '@/components/DeleteProtocolButton'
 
 export default async function ExecutiveProtocolPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -103,6 +104,7 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
 
         {/* Row 1: status badge + action buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
           <span className={`text-xs font-medium px-3 py-1.5 rounded-full capitalize whitespace-nowrap ${
             protocol.final_outcome === 'approved' ? 'bg-green-100 text-green-700' :
             protocol.final_outcome === 'fast_track_accepted' ? 'bg-green-100 text-green-700' :
@@ -117,6 +119,10 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
              protocol.final_outcome === 'fast_track_rejected' ? 'Fast Track Rejected' :
              protocol.final_outcome?.replace(/_/g, ' ') ?? 'Pending'}
           </span>
+          {profile.role === 'admin' && (
+            <DeleteProtocolButton protocolId={id} protocolTitle={protocol.title || 'Untitled Protocol'} />
+          )}
+          </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {(protocol.final_outcome === 'approved' || protocol.final_outcome === 'fast_track_accepted') && (
