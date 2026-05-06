@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 import PrintButton from './PrintButton'
 import SendAgendaButton from './SendAgendaButton'
 
@@ -7,6 +8,16 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 function fmtDate(iso: string) {
   const d = new Date(iso)
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+}
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>
+}): Promise<Metadata> {
+  const { date } = await searchParams
+  if (!date) return { title: 'DRC Protocol Review' }
+  return { title: `DRC Protocol Review Agenda ${fmtDate(date)}` }
 }
 
 export default async function AgendaPrintPage({
@@ -117,7 +128,7 @@ export default async function AgendaPrintPage({
         <a href="/dashboard/executive/agenda" className="text-sm text-gray-500 hover:text-gray-700">← Back</a>
         <div className="flex items-center gap-3">
           <SendAgendaButton date={date} apologyIds={apologyIds} />
-          <PrintButton />
+          <PrintButton title={`DRC Protocol Review Agenda ${meetingDateFormatted}`} />
         </div>
       </div>
 
