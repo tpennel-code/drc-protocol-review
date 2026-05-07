@@ -7,7 +7,7 @@ import { Profile, UserRole } from '@/lib/types'
 
 const DIVISIONS = [
   'Cardiothoracic Surgery', 'ENT', 'General Surgery', 'Global Surgery',
-  'Ophthalmology', 'Orthopaedic Surgery', 'Paediatric Surgery', 'Urology',
+  'Neurosurgery', 'Ophthalmology', 'Orthopaedic Surgery', 'Paediatric Surgery', 'Urology',
 ]
 
 const PORTFOLIOS = [

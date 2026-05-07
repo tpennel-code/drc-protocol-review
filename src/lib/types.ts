@@ -74,6 +74,7 @@ export interface Review {
   reviewer_id: string
   recommendation: ReviewRecommendation | null
   comments: string | null
+  attachment_path: string | null
   submitted_at: string
   reviewer?: Profile
 }

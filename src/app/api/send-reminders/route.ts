@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 function fmtDate(iso: string) {
@@ -57,7 +57,6 @@ export async function POST(req: Request) {
     : 'Dr Claire Warden'
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const resend = new Resend(process.env.RESEND_API_KEY)
 
   let sent = 0
   const skipped: string[] = []
@@ -82,8 +81,7 @@ export async function POST(req: Request) {
 
     const salutation = [reviewer.professional_title, reviewer.surname].filter(Boolean).join(' ')
 
-    await resend.emails.send({
-      from: 'DRC <onboarding@resend.dev>',
+    await sendEmail({
       to: reviewer.email,
       subject: `DRC Review Reminder – ${protocol.serial_text ?? protocol.id}`,
       text: `Dear ${salutation}

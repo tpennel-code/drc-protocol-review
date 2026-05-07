@@ -1,11 +1,26 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
+import { renderAgendaPdf } from '@/lib/agenda-pdf-render'
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-function fmtDate(iso: string) {
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const DAYS_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+
+function fmtDateShort(iso: string) {
   const d = new Date(iso)
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+}
+
+function ordinal(n: number) {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
+}
+
+function fmtDateLong(iso: string) {
+  const d = new Date(iso)
+  return `${DAYS_LONG[d.getUTCDay()]}, ${ordinal(d.getUTCDate())} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`
 }
 
 export async function POST(req: Request) {
@@ -39,7 +54,7 @@ export async function POST(req: Request) {
       .eq('archived', false)
       .order('surname'),
     supabase.from('profiles')
-      .select('professional_title, firstname, surname, email')
+      .select('professional_title, firstname, surname, email, signature_url')
       .eq('portfolio', 'Chairperson')
       .single(),
     supabase.from('meeting_dates')
@@ -54,89 +69,104 @@ export async function POST(req: Request) {
   const apologisedNames = (allReviewers ?? [])
     .filter(r => (apologyIds ?? []).includes(r.id))
     .map(r => [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' '))
-  const chairName = chair ? [chair.professional_title, chair.firstname, chair.surname].filter(Boolean).join(' ') : 'Dr Claire Warden'
-  const chairEmail = chair?.email ?? 'claire.warden@uct.ac.za'
-  const nextMeeting = nextMeetingRows?.[0]?.meeting_date ? fmtDate(String(nextMeetingRows[0].meeting_date)) : null
-  const meetingDateFormatted = fmtDate(date)
 
-  // Build recipient list: all reviewer emails + applicant emails for this meeting's protocols
-  const reviewerEmails = (allReviewers ?? [])
-    .filter(r => r.email && !r.email.endsWith('@drc.local'))
-    .map(r => r.email)
-  const applicantEmails = (protocols ?? [])
-    .filter(p => p.applicant_email && !p.applicant_email.endsWith('@drc.local'))
-    .map(p => p.applicant_email as string)
-  const allRecipients = [...new Set([...reviewerEmails, ...applicantEmails])]
+  const chairName = chair
+    ? [chair.professional_title, chair.firstname, chair.surname].filter(Boolean).join(' ')
+    : 'Dr Claire Warden'
+  const chairFirstLast = chair
+    ? [chair.firstname, chair.surname].filter(Boolean).join(' ')
+    : 'Claire Warden'
+  const chairEmail = chair?.email ?? 'claire.warden@uct.ac.za'
+
+  const nextMeetingRaw = nextMeetingRows?.[0]?.meeting_date ? String(nextMeetingRows[0].meeting_date) : null
+  const nextMeeting = nextMeetingRaw ? fmtDateShort(nextMeetingRaw) : null
+  const nextMeetingMonth = nextMeetingRaw ? MONTHS_LONG[new Date(nextMeetingRaw).getUTCMonth()] : null
+
+  const meetingDateFormatted = fmtDateShort(date)
+  const meetingDateLong = fmtDateLong(date)
+  const meetingDayOfWeek = DAYS_LONG[new Date(date).getUTCDay()]
+
+  // Recipients: applicants → To, committee reviewers → Cc.
+  // If someone is both an applicant and a reviewer, drop them from Cc to avoid duplicate.
+  const hasRealEmail = (e: string | null | undefined) => !!e && !e.endsWith('@drc.local')
+  const applicantEmails = Array.from(new Set(
+    (protocols ?? [])
+      .filter(p => hasRealEmail(p.applicant_email))
+      .map(p => p.applicant_email as string)
+  ))
+  const reviewerEmails = Array.from(new Set(
+    (allReviewers ?? [])
+      .filter(r => hasRealEmail(r.email))
+      .map(r => r.email as string)
+  ))
+
+  // If there are no applicants on this meeting, send to reviewers as To
+  const toEmails = applicantEmails.length > 0 ? applicantEmails : reviewerEmails
+  const ccEmails = applicantEmails.length > 0
+    ? reviewerEmails.filter(e => !applicantEmails.includes(e))
+    : []
+  const allRecipients = [...toEmails, ...ccEmails]
 
   if (allRecipients.length === 0) {
     return NextResponse.json({ error: 'No valid email addresses found' }, { status: 400 })
   }
 
-  // Build agenda text
-  let fastSection = '4. Fast-Tracked Protocols\n'
-  if (fastTracked.length === 0) {
-    fastSection += '   None\n'
-  } else {
-    fastTracked.forEach((p, i) => {
-      const initial = p.applicant_firstname?.[0] ? `${p.applicant_firstname[0].toUpperCase()} ` : ''
-      const applicant = [p.applicant_title, `${initial}${(p.applicant_surname ?? '').toUpperCase()}`].filter(Boolean).join(' ')
-      fastSection += `   4.${i + 1} ${applicant} (Protocol No.: ${p.serial_text ?? '—'})\n   ${p.title ?? ''}\n`
-    })
-  }
+  // Names list for the PDF: full committee + all applicants (regardless of deliverability)
+  const reviewerNames = (allReviewers ?? []).map(r =>
+    [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' ')
+  )
+  const applicantNames = (protocols ?? []).map(p =>
+    [p.applicant_title, p.applicant_firstname, p.applicant_surname].filter(Boolean).join(' ')
+  )
+  const agendaSentTo = [...reviewerNames, ...applicantNames].join(', ')
 
-  let reviewSection = '5. Protocols For Review (14:00)\n'
-  if (forReview.length === 0) {
-    reviewSection += '   None\n'
-  } else {
-    forReview.forEach((p, i) => {
-      const initial = p.applicant_firstname?.[0] ? `${p.applicant_firstname[0]} ` : ''
-      const applicant = [p.applicant_title, `${initial}${p.applicant_surname ?? ''}`].filter(Boolean).join(' ')
-      reviewSection += `   5.${i + 1} ${applicant} (Protocol No.: ${p.serial_text ?? '—'})\n   ${p.title ?? ''}\n`
-    })
-  }
+  // People who appear in "Agenda Sent to" but won't receive the email (placeholder/missing email)
+  const skipped: string[] = [
+    ...(allReviewers ?? [])
+      .filter(r => !hasRealEmail(r.email))
+      .map(r => [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' ')),
+    ...(protocols ?? [])
+      .filter(p => !hasRealEmail(p.applicant_email))
+      .map(p => [p.applicant_title, p.applicant_firstname, p.applicant_surname].filter(Boolean).join(' ')),
+  ]
 
-  const reviewerNames = (allReviewers ?? []).map(r => [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' '))
-  const applicantNames = (protocols ?? []).map(p => [p.applicant_title, p.applicant_firstname, p.applicant_surname].filter(Boolean).join(' '))
-  const sentTo = [...reviewerNames, ...applicantNames].join(', ')
+  // Render the agenda PDF
+  const pdfBuffer = await renderAgendaPdf({
+    meetingDateFormatted,
+    apologisedNames,
+    fastTracked,
+    forReview,
+    agendaSentTo,
+    nextMeeting,
+    chairName,
+    chairEmail,
+    signatureUrl: chair?.signature_url ?? null,
+  })
 
-  const emailBody = `UNIVERSITY OF CAPE TOWN
-DEPARTMENT OF SURGERY RESEARCH COMMITTEE
+  const emailBody = `Dear All
 
-13:30 Committee Members only
-13:45 Investigators
-${meetingDateFormatted}
-Venue: via Zoom
+Please see the attached agenda for the online Surgical DRC meeting on ${meetingDateLong}. The meeting link will be sent in a separate email.
 
-Should you be unable to attend and wish to have your apologies recorded, email ${chairEmail}
+The committee will meet at 13:45. The presentation of the protocols will start at 14:00. Please send a representative to present the summary of your protocol if you are unable to attend. Unrepresented protocols without an apology will be rolled over to the next meeting${nextMeetingMonth ? ` in ${nextMeetingMonth}` : ''}.
 
-AGENDA
+The DRC meeting is an open forum to assist researchers with protocol design. We look forward to discussing your protocols with you on ${meetingDayOfWeek}.
 
-1. Apologies
-${apologisedNames.length > 0 ? '   ' + apologisedNames.join(', ') : '   None recorded'}
+Please note that protocols that have been fast-tracked are on the agenda for administrative purposes and do not require representation at the meeting.
 
-2. Minutes of Previous Meeting
+Regards
+${chairFirstLast}`
 
-3. Matters of Urgency
-
-${fastSection}
-${reviewSection}
-6. Agenda Sent to: ${sentTo}
-${nextMeeting ? `\nNext Meeting ${nextMeeting}` : ''}
-
-Yours sincerely
-
-${chairName.toUpperCase()}
-CHAIR: SURGICAL DRC
-
-"OUR MISSION is to be an outstanding teaching and research university, educating for life and addressing the challenges facing our society."`
-
-  const resend = new Resend(process.env.RESEND_API_KEY)
-
-  const { error } = await resend.emails.send({
-    from: 'DRC <onboarding@resend.dev>',
-    to: allRecipients,
+  const { error } = await sendEmail({
+    to: toEmails,
+    cc: ccEmails.length > 0 ? ccEmails : undefined,
     subject: `DRC Meeting Agenda – ${meetingDateFormatted}`,
     text: emailBody,
+    attachments: [
+      {
+        filename: `DRC Protocol Review Agenda ${meetingDateFormatted}.pdf`,
+        content: pdfBuffer,
+      },
+    ],
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -150,5 +180,5 @@ CHAIR: SURGICAL DRC
     })
   }
 
-  return NextResponse.json({ success: true, sent: allRecipients.length })
+  return NextResponse.json({ success: true, sent: allRecipients.length, skipped })
 }

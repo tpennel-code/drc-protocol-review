@@ -6,6 +6,7 @@ import ReviewForm from '@/components/ReviewForm'
 import EmailApplicantButton from '@/components/EmailApplicantButton'
 import MeetingDatePicker from '@/components/MeetingDatePicker'
 import DeleteProtocolButton from '@/components/DeleteProtocolButton'
+import { resolveStorageLink, storageDisplayName } from '@/lib/storage'
 
 export default async function ExecutiveProtocolPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -73,6 +74,18 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
   const { data: myReview } = isAssigned
     ? await supabase.from('reviews').select('*').eq('protocol_id', id).eq('reviewer_id', user.id).single()
     : { data: null }
+
+  // Resolve signed URLs for each reviewer's attachment + the executive's own
+  const reviewAttachments = await Promise.all(
+    (reviews ?? []).map(async (r: { id: string; attachment_path: string | null }) => ({
+      id: r.id,
+      url: await resolveStorageLink(supabase, r.attachment_path),
+      name: storageDisplayName(r.attachment_path),
+    }))
+  )
+  const reviewAttachmentMap = new Map(reviewAttachments.map(a => [a.id, a]))
+  const myAttachmentUrl = await resolveStorageLink(supabase, myReview?.attachment_path)
+  const myAttachmentName = storageDisplayName(myReview?.attachment_path)
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -302,24 +315,43 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Reviewer Submissions</h2>
           <div className="space-y-4">
-            {reviews.map((review: any) => (
-              <div key={review.id} className="border border-gray-100 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-medium text-gray-800">
-                    {review.reviewer?.professional_title} {review.reviewer?.firstname} {review.reviewer?.surname}
-                    {review.reviewer_id === user.id && (
-                      <span className="ml-2 text-xs text-gray-400">(you)</span>
-                    )}
-                  </p>
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 capitalize">
-                    {review.recommendation?.replace(/_/g, ' ')}
-                  </span>
+            {reviews.map((review: any) => {
+              const att = reviewAttachmentMap.get(review.id)
+              return (
+                <div key={review.id} className="border border-gray-100 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-medium text-gray-800">
+                      {review.reviewer?.professional_title} {review.reviewer?.firstname} {review.reviewer?.surname}
+                      {review.reviewer_id === user.id && (
+                        <span className="ml-2 text-xs text-gray-400">(you)</span>
+                      )}
+                    </p>
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 capitalize">
+                      {review.recommendation?.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  {review.comments && (
+                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{review.comments}</p>
+                  )}
+                  {att?.url && (
+                    <div className="mt-3 flex items-center gap-2 text-sm">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-gray-500">Attachment:</span>
+                      <a
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline truncate"
+                      >
+                        {att.name}
+                      </a>
+                    </div>
+                  )}
                 </div>
-                {review.comments && (
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{review.comments}</p>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -330,6 +362,8 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
           protocolId={id}
           reviewerId={user.id}
           existingReview={myReview ?? null}
+          existingAttachmentUrl={myAttachmentUrl}
+          existingAttachmentName={myAttachmentName}
         />
       )}
 

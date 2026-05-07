@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@supabase/supabase-js'
 
 function formatDate(iso: string) {
@@ -141,15 +141,9 @@ Data Review Committee · University of Cape Town
   </div>
 </div>`
 
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
-    console.warn('RESEND_API_KEY not set — email not sent')
-    return NextResponse.json({ success: true })
-  }
-
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
   // Fetch all exec/admin emails to CC
@@ -170,9 +164,7 @@ Data Review Committee · University of Cape Town
     downloadAttachment(supabaseAdmin, supplementaryFilePath ?? null, supplementaryFile || 'supplementary'),
   ])).filter((a): a is { filename: string; content: Buffer } => a !== null)
 
-  const resend = new Resend(apiKey)
-  const { error } = await resend.emails.send({
-    from: 'DRC <onboarding@resend.dev>',
+  const { error } = await sendEmail({
     to: email,
     cc: ccEmails.length > 0 ? ccEmails : undefined,
     subject,

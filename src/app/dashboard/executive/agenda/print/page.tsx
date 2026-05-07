@@ -45,14 +45,14 @@ export default async function AgendaPrintPage({
   ] = await Promise.all([
     supabase
       .from('protocols')
-      .select('id, serial_text, title, applicant_title, applicant_firstname, applicant_surname, fast_tracked, final_outcome')
+      .select('id, serial_text, title, applicant_title, applicant_firstname, applicant_surname, applicant_email, fast_tracked, final_outcome')
       .eq('omit_record', false)
       .or(`meeting_date.eq.${date},meeting_date.like.${date}%`)
       .order('fast_tracked', { ascending: false })
       .order('serial_text'),
     supabase
       .from('profiles')
-      .select('id, professional_title, firstname, surname')
+      .select('id, professional_title, firstname, surname, email')
       .in('role', ['reviewer', 'executive', 'admin'])
       .eq('archived', false)
       .order('surname'),
@@ -84,7 +84,7 @@ export default async function AgendaPrintPage({
 
   const meetingDateFormatted = fmtDate(date)
 
-  // Agenda sent to: all reviewers + all applicants
+  // Agenda sent to: full committee + all applicants (delivery is best-effort against valid emails)
   const reviewerNames = (allReviewers ?? []).map(r =>
     [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' ')
   )
@@ -103,32 +103,12 @@ export default async function AgendaPrintPage({
 
   return (
     <>
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { margin: 0 !important; padding: 0 !important; }
-          .agenda-page {
-            width: 210mm !important;
-            min-height: 297mm !important;
-            padding: 12mm 15mm !important;
-            box-sizing: border-box !important;
-            background: white !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-            max-width: none !important;
-          }
-        }
-        @page { size: A4; margin: 0; }
-      `}</style>
-
       {/* Screen toolbar */}
       <div className="no-print max-w-4xl mx-auto mt-6 mb-4 flex items-center justify-between px-4">
         <a href="/dashboard/executive/agenda" className="text-sm text-gray-500 hover:text-gray-700">← Back</a>
         <div className="flex items-center gap-3">
           <SendAgendaButton date={date} apologyIds={apologyIds} />
-          <PrintButton title={`DRC Protocol Review Agenda ${meetingDateFormatted}`} />
+          <PrintButton date={date} apologyIds={apologyIds} />
         </div>
       </div>
 
@@ -149,8 +129,8 @@ export default async function AgendaPrintPage({
           {/* Meeting info block */}
           <div className="text-center mb-6 space-y-0.5">
             <p className="font-bold text-base uppercase tracking-wide">Department of Surgery Research Committee</p>
-            <p>13:30 Committee Members only</p>
-            <p>13:45 Investigators</p>
+            <p>13:45 Committee Members only</p>
+            <p>14:00 Investigators</p>
             <p className="font-semibold">{meetingDateFormatted}</p>
             <p>Venue: via Zoom</p>
             <p className="text-gray-600 mt-2">
@@ -185,12 +165,12 @@ export default async function AgendaPrintPage({
 
           {/* 4. Fast-Tracked */}
           <div className="mb-5">
-            <p className="font-semibold mb-2">4. Fast-Tracked Protocols</p>
+            <p className="font-semibold mb-2">4. Fast-Tracked Protocols <span className="font-normal italic text-gray-600">(Do not need to attend meeting)</span></p>
             {fastTracked.length > 0 ? fastTracked.map(p => {
               const n = `4.${fastIdx++}`
               const applicant = [p.applicant_title, p.applicant_firstname?.[0] ? `${p.applicant_firstname[0].toUpperCase()} ${p.applicant_surname?.toUpperCase()}` : p.applicant_surname?.toUpperCase()].filter(Boolean).join(' ')
               return (
-                <div key={p.id} className="ml-4 mb-3">
+                <div key={p.id} className="protocol-item ml-4 mb-3">
                   <p className="font-medium">{n} {applicant} (Protocol No.: {p.serial_text ?? '—'})</p>
                   <p className="text-gray-700 ml-4">{p.title ?? 'Untitled Protocol'}</p>
                 </div>
@@ -210,7 +190,7 @@ export default async function AgendaPrintPage({
               const surname = p.applicant_surname ?? ''
               const applicant = [title, `${initial}${surname}`].filter(Boolean).join(' ')
               return (
-                <div key={p.id} className="ml-4 mb-3">
+                <div key={p.id} className="protocol-item ml-4 mb-3">
                   <p className="font-medium">{n} {applicant} (Protocol No.: {p.serial_text ?? '—'})</p>
                   <p className="text-gray-700 ml-4">{p.title ?? 'Untitled Protocol'}</p>
                 </div>
