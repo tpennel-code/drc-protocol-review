@@ -93,7 +93,8 @@ export default async function AgendaPrintPage({
   )
   const agendaSentTo = [...reviewerNames, ...applicantNames].join(', ')
 
-  function protocolLabel(p: typeof protocols[0], n: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function protocolLabel(p: any, n: string) {
     const applicant = [p.applicant_title, p.applicant_firstname?.[0] ? `${p.applicant_firstname[0]} ${p.applicant_surname}` : p.applicant_surname].filter(Boolean).join(' ')
     return `${n} ${applicant} (Protocol No.: ${p.serial_text ?? '—'})\n${p.title ?? 'Untitled Protocol'}`
   }

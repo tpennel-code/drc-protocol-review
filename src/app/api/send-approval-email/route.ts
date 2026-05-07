@@ -67,8 +67,9 @@ export async function POST(req: Request) {
   const uctLogoBase64 = readFileSync(join(process.cwd(), 'public', 'uct-shield.png')).toString('base64')
   const drcLogoBase64 = readFileSync(join(process.cwd(), 'public', 'drc-logo.png')).toString('base64')
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfBuffer = await renderToBuffer(
-    createElement(ApprovalLetterPDF, { protocol, chair, uctLogoBase64, drcLogoBase64, letterType: type })
+    createElement(ApprovalLetterPDF, { protocol, chair, uctLogoBase64, drcLogoBase64, letterType: type }) as any
   )
 
   const chairName = chair

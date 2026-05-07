@@ -70,5 +70,6 @@ export async function sendEmail(args: EmailArgs) {
   }
 
   const resend = new Resend(apiKey)
-  return resend.emails.send(payload)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return resend.emails.send(payload as any)
 }

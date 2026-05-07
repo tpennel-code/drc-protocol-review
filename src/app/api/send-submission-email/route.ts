@@ -14,7 +14,8 @@ function formatDate(iso: string) {
 }
 
 async function downloadAttachment(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   storagePath: string | null,
   filename: string,
 ) {

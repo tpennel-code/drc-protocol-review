@@ -62,8 +62,10 @@ export async function POST(req: Request) {
   const skipped: string[] = []
 
   for (const a of assignments) {
-    const protocol = a.protocol as { id: string; title: string | null; serial_text: string | null; meeting_date: string | null } | null
-    const reviewer = a.reviewer as { email: string | null; professional_title: string | null; firstname: string | null; surname: string | null } | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const protocol = (a.protocol as any) as { id: string; title: string | null; serial_text: string | null; meeting_date: string | null } | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const reviewer = (a.reviewer as any) as { email: string | null; professional_title: string | null; firstname: string | null; surname: string | null } | null
 
     if (!protocol || !reviewer) continue
     if (!reviewer.email || reviewer.email.endsWith('@drc.local')) { skipped.push(reviewer.email ?? ''); continue }

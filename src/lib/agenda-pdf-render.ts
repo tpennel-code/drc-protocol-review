@@ -29,11 +29,12 @@ export async function renderAgendaPdf(data: AgendaPdfData): Promise<Buffer> {
   const uctShieldBase64 = readFileSync(join(process.cwd(), 'public', 'uct-shield.png')).toString('base64')
   const drcLogoBase64 = readFileSync(join(process.cwd(), 'public', 'drc-logo.png')).toString('base64')
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(
     createElement(AgendaDocument, {
       ...data,
       uctShieldBase64,
       drcLogoBase64,
-    })
+    }) as any
   )
 }
