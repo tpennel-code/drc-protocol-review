@@ -221,7 +221,7 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
     const res = await fetch('/api/create-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: addForm.email }),
+      body: JSON.stringify({ email: addForm.email, password: addForm.surname || undefined }),
     })
     const json = await res.json()
     if (!res.ok) { setAddError(json.error || 'Failed to create user.'); setAddSaving(false); return }
@@ -320,7 +320,8 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
       if (!email) continue
       const { data: existing } = await supabase.from('profiles').select('id').eq('email', email).single()
       if (existing) { skipped++; continue }
-      const res = await fetch('/api/create-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+      const surname = surnameIdx >= 0 ? cols[surnameIdx] : undefined
+      const res = await fetch('/api/create-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: surname || undefined }) })
       const json = await res.json()
       if (!res.ok) { skipped++; continue }
       await supabase.from('profiles').upsert({

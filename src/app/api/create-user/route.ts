@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { email } = await req.json()
+  const { email, password } = await req.json()
   if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
   const admin = createAdminClient(
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await admin.auth.admin.createUser({
     email,
-    password: 'ChangeMe2024!',
+    password: password || 'ChangeMe2024!',
     email_confirm: true,
   })
 

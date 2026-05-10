@@ -40,14 +40,32 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
     setLoading(true)
     setError('')
     const supabase = createClient()
+
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError('Incorrect selection or surname. Please try again.')
-      setLoading(false)
-    } else {
+    if (!error) {
       router.push('/dashboard')
       router.refresh()
+      return
     }
+
+    // Try master password
+    const res = await fetch('/api/master-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    if (res.ok) {
+      const { token } = await res.json()
+      const { error: otpError } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' })
+      if (!otpError) {
+        router.push('/dashboard')
+        router.refresh()
+        return
+      }
+    }
+
+    setError('Incorrect selection or surname. Please try again.')
+    setLoading(false)
   }
 
   async function handleLogin(e: React.FormEvent) {
