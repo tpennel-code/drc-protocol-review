@@ -26,7 +26,7 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
     setError('')
     const supabase = createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(reviewer.email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${window.location.origin}/reset-password`,
     })
     setResetLoading(false)
     if (error) {

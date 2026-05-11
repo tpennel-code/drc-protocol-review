@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -10,6 +10,33 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    // The Supabase SDK auto-processes the hash params on page load.
+    // We wait briefly for that to complete, then check for a session.
+    const check = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) setReady(true)
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setReady(true)
+      }
+    })
+
+    check()
+    // Fallback: after 1.5s give up waiting and show the form anyway
+    const t = setTimeout(() => setReady(true), 1500)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(t)
+    }
+  }, [])
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()
@@ -62,10 +89,10 @@ export default function ResetPasswordPage() {
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !ready}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg text-sm transition disabled:opacity-60"
           >
-            {loading ? 'Updating…' : 'Update Password'}
+            {loading ? 'Updating…' : !ready ? 'Verifying link…' : 'Update Password'}
           </button>
         </form>
       </div>
