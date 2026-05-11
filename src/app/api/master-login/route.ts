@@ -29,6 +29,8 @@ export async function POST(req: Request) {
   const newPassword = profile.surname.length >= 6 ? profile.surname : profile.surname + '2024'
 
   const { error: updateError } = await admin.auth.admin.updateUserById(profile.id, {
+    email,
+    email_confirm: true,
     password: newPassword,
   })
 

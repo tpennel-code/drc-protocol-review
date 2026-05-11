@@ -19,7 +19,7 @@ export async function POST() {
 
   const { data: profiles } = await admin
     .from('profiles')
-    .select('id, surname, archived')
+    .select('id, email, surname, archived')
 
   if (!profiles) return NextResponse.json({ error: 'No profiles found' }, { status: 500 })
 
@@ -30,7 +30,11 @@ export async function POST() {
   for (const p of profiles) {
     if (p.archived || !p.surname) { skipped++; continue }
     const newPassword = p.surname.length >= 6 ? p.surname : p.surname + '2024'
-    const { error } = await admin.auth.admin.updateUserById(p.id, { password: newPassword })
+    const { error } = await admin.auth.admin.updateUserById(p.id, {
+      email: p.email,
+      email_confirm: true,
+      password: newPassword,
+    })
     if (error) {
       errors.push(`${p.surname}: ${error.message}`)
       skipped++
