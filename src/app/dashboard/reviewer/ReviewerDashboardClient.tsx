@@ -217,8 +217,11 @@ export default function ReviewerDashboardClient({
                         <span className="text-xs text-orange-500 font-medium">Awaiting your review</span>
                         <button
                           onClick={() => { setDeclineTarget(a); setDeclineReason(''); setDeclineError('') }}
-                          className="text-xs text-red-600 hover:text-red-800 font-medium hover:underline"
+                          className="mt-1 inline-flex items-center gap-1 text-xs font-medium bg-white border border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 px-3 py-1.5 rounded-lg transition"
                         >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
                           Decline to review
                         </button>
                       </>
