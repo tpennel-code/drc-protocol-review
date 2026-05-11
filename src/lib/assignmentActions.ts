@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/email'
 
@@ -91,12 +92,23 @@ export async function declineAssignment(
   if (!assignment) return { error: 'Assignment not found' }
   if (assignment.reviewer_id !== user.id) return { error: 'Unauthorized' }
 
-  const { error: updateError } = await supabase
+  // Authorization is already enforced above (reviewer_id === user.id), so we
+  // use the admin client to bypass RLS for the actual UPDATE — Supabase
+  // silently affects 0 rows when RLS denies, which would leave the user
+  // thinking their decline persisted.
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!,
+  )
+
+  const { data: updated, error: updateError } = await admin
     .from('protocol_assignments')
     .update({ status: 'declined' })
     .eq('id', assignmentId)
+    .select()
 
   if (updateError) return { error: `Decline failed: ${updateError.message}` }
+  if (!updated || updated.length === 0) return { error: 'Decline did not persist' }
 
   revalidatePath('/dashboard/reviewer')
   revalidatePath(`/dashboard/executive/protocols/${assignment.protocol_id}`)
