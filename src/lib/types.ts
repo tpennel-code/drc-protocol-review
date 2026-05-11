@@ -63,7 +63,7 @@ export interface ProtocolAssignment {
   reviewer_id: string
   assigned_by: string
   assigned_at: string
-  status: 'pending' | 'in_review' | 'completed'
+  status: 'pending' | 'in_review' | 'completed' | 'declined'
   reviewer?: Profile
   protocol?: Protocol
 }

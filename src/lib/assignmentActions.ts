@@ -91,12 +91,12 @@ export async function declineAssignment(
   if (!assignment) return { error: 'Assignment not found' }
   if (assignment.reviewer_id !== user.id) return { error: 'Unauthorized' }
 
-  const { error: deleteError } = await supabase
+  const { error: updateError } = await supabase
     .from('protocol_assignments')
-    .delete()
+    .update({ status: 'declined' })
     .eq('id', assignmentId)
 
-  if (deleteError) return { error: `Delete failed: ${deleteError.message}` }
+  if (updateError) return { error: `Decline failed: ${updateError.message}` }
 
   revalidatePath('/dashboard/reviewer')
   revalidatePath(`/dashboard/executive/protocols/${assignment.protocol_id}`)

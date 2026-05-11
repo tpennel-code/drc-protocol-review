@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ReviewForm from '@/components/ReviewForm'
-import DeclineProtocolButton from '@/components/DeclineProtocolButton'
 import { resolveStorageLink, storageDisplayName } from '@/lib/storage'
 
 export default async function ReviewerProtocolPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +11,7 @@ export default async function ReviewerProtocolPage({ params }: { params: Promise
 
   const { data: assignment } = await supabase
     .from('protocol_assignments')
-    .select('id')
+    .select('id, status')
     .eq('protocol_id', id)
     .eq('reviewer_id', user.id)
     .single()
@@ -56,14 +55,9 @@ export default async function ReviewerProtocolPage({ params }: { params: Promise
   return (
     <div className="max-w-3xl mx-auto">
       <div className="bg-white rounded-2xl border border-gray-200 p-8 mb-6">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{protocol.title || 'Untitled Protocol'}</h1>
-            <p className="text-sm text-gray-500 mt-1">{protocol.serial_text}</p>
-          </div>
-          {!existingReview && (
-            <DeclineProtocolButton assignmentId={assignment.id} protocolSerial={protocol.serial_text} />
-          )}
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900">{protocol.title || 'Untitled Protocol'}</h1>
+          <p className="text-sm text-gray-500 mt-1">{protocol.serial_text}</p>
         </div>
 
         <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
@@ -132,6 +126,9 @@ export default async function ReviewerProtocolPage({ params }: { params: Promise
         existingReview={existingReview}
         existingAttachmentUrl={existingAttachmentUrl}
         existingAttachmentName={existingAttachmentName}
+        assignmentId={assignment.id}
+        assignmentStatus={assignment.status}
+        protocolSerial={protocol.serial_text}
       />
     </div>
   )

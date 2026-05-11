@@ -40,6 +40,7 @@ function formatDate(iso: string | null | undefined) {
 type Assignment = {
   id: string
   assigned_at: string | null
+  status: string | null
   protocol: any
 }
 
@@ -81,12 +82,13 @@ export default function ReviewerDashboardClient({
     router.refresh()
   }
 
-  const visible = filter === 'pending'
-    ? assignments.filter(a => !reviewedIds.has(a.protocol?.id))
-    : assignments
+  const isAwaitingReview = (a: Assignment) =>
+    !reviewedIds.has(a.protocol?.id) && a.status !== 'declined'
+
+  const visible = filter === 'pending' ? assignments.filter(isAwaitingReview) : assignments
 
   const submitted = assignments.filter(a => reviewedIds.has(a.protocol?.id))
-  const pending = assignments.filter(a => !reviewedIds.has(a.protocol?.id))
+  const pending = assignments.filter(isAwaitingReview)
 
   const responseTimes = submitted.flatMap(a => {
     const submittedAt = reviewSubmittedAt.get(a.protocol?.id)
@@ -169,7 +171,7 @@ export default function ReviewerDashboardClient({
             onClick={() => setFilter('pending')}
             className={`px-4 py-2 transition border-l border-gray-200 ${filter === 'pending' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
           >
-            Awaiting Review ({assignments.filter(a => !reviewedIds.has(a.protocol?.id)).length})
+            Awaiting Review ({pending.length})
           </button>
         </div>
       </div>
@@ -212,6 +214,8 @@ export default function ReviewerDashboardClient({
                     </span>
                     {reviewed ? (
                       <span className="text-xs text-green-600 font-medium">Review submitted</span>
+                    ) : a.status === 'declined' ? (
+                      <span className="text-xs text-red-600 font-medium">Declined</span>
                     ) : (
                       <>
                         <span className="text-xs text-orange-500 font-medium">Awaiting your review</span>

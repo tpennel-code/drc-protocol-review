@@ -10,7 +10,7 @@ export default async function ReviewerDashboard() {
   const { data: assignments } = await supabase
     .from('protocol_assignments')
     .select(`
-      *,
+      id, assigned_at, status,
       protocol:protocols(*)
     `)
     .eq('reviewer_id', user.id)

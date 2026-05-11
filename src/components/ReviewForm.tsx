@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ReviewRecommendation, Review } from '@/lib/types'
+import { declineAssignment } from '@/lib/assignmentActions'
 
 const recommendations: { value: ReviewRecommendation; label: string }[] = [
   { value: 'approved', label: 'Approved' },
@@ -28,12 +29,18 @@ export default function ReviewForm({
   existingReview,
   existingAttachmentUrl,
   existingAttachmentName,
+  assignmentId,
+  assignmentStatus,
+  protocolSerial,
 }: {
   protocolId: string
   reviewerId: string
   existingReview: Review | null
   existingAttachmentUrl?: string | null
   existingAttachmentName?: string
+  assignmentId?: string
+  assignmentStatus?: string | null
+  protocolSerial?: string | null
 }) {
   const router = useRouter()
   const [recommendation, setRecommendation] = useState<ReviewRecommendation | ''>(
@@ -45,6 +52,28 @@ export default function ReviewForm({
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const [pendingFileName, setPendingFileName] = useState('')
+
+  // Decline modal state
+  const [declineOpen, setDeclineOpen] = useState(false)
+  const [declineReason, setDeclineReason] = useState('')
+  const [declining, setDeclining] = useState(false)
+  const [declineError, setDeclineError] = useState('')
+
+  async function handleDecline() {
+    if (!assignmentId) return
+    setDeclining(true)
+    setDeclineError('')
+    const { error: err } = await declineAssignment(assignmentId, declineReason.trim())
+    setDeclining(false)
+    if (err) {
+      setDeclineError(err)
+      return
+    }
+    setDeclineOpen(false)
+    setDeclineReason('')
+    router.push('/dashboard/reviewer')
+    router.refresh()
+  }
 
   const isSubmitted = !!existingReview
   const hasExistingAttachment = !!existingReview?.attachment_path
@@ -162,14 +191,69 @@ export default function ReviewForm({
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={saving || !recommendation}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition disabled:opacity-60"
-        >
-          {saving ? 'Saving…' : isSubmitted ? 'Update Review' : 'Submit Review'}
-        </button>
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            type="submit"
+            disabled={saving || !recommendation}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition disabled:opacity-60"
+          >
+            {saving ? 'Saving…' : isSubmitted ? 'Update Review' : 'Submit Review'}
+          </button>
+          {assignmentId && !isSubmitted && assignmentStatus !== 'declined' && (
+            <button
+              type="button"
+              onClick={() => { setDeclineReason(''); setDeclineError(''); setDeclineOpen(true) }}
+              className="inline-flex items-center gap-1.5 text-sm font-medium bg-white border border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 px-5 py-2.5 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Decline to review
+            </button>
+          )}
+          {assignmentStatus === 'declined' && (
+            <span className="text-sm font-medium text-red-600">You declined this protocol.</span>
+          )}
+        </div>
       </form>
+
+      {declineOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Decline to Review?</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              You are about to decline the review of <strong>{protocolSerial ?? 'this protocol'}</strong>. The Chair will be notified by email and can assign another reviewer.
+            </p>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Reason (optional)</label>
+            <textarea
+              value={declineReason}
+              onChange={e => setDeclineReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. Conflict of interest, on leave during meeting…"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+            />
+            {declineError && <p className="text-sm text-red-600 mb-2">{declineError}</p>}
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => { setDeclineOpen(false); setDeclineReason(''); setDeclineError('') }}
+                disabled={declining}
+                className="text-gray-500 hover:text-gray-700 text-sm px-4 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDecline}
+                disabled={declining}
+                className="bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2 rounded-lg text-sm transition disabled:opacity-60"
+              >
+                {declining ? 'Declining…' : 'Decline & notify Chair'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
