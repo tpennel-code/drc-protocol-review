@@ -237,21 +237,19 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
     const res = await fetch('/api/create-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: addForm.email, password: addForm.surname || undefined }),
+      body: JSON.stringify({
+        email: addForm.email,
+        password: addForm.surname || undefined,
+        professional_title: addForm.professional_title,
+        firstname: addForm.firstname,
+        surname: addForm.surname,
+        division: addForm.division,
+        portfolio: addForm.portfolio,
+        role: addForm.role,
+      }),
     })
     const json = await res.json()
     if (!res.ok) { setAddError(json.error || 'Failed to create user.'); setAddSaving(false); return }
-
-    await supabase.from('profiles').upsert({
-      id: json.id,
-      email: addForm.email,
-      professional_title: addForm.professional_title || null,
-      firstname: addForm.firstname || null,
-      surname: addForm.surname || null,
-      division: addForm.division || null,
-      portfolio: addForm.portfolio || null,
-      role: addForm.role,
-    })
 
     setShowAdd(false)
     setAddForm(emptyForm)
@@ -337,18 +335,21 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
       const { data: existing } = await supabase.from('profiles').select('id').eq('email', email).single()
       if (existing) { skipped++; continue }
       const surname = surnameIdx >= 0 ? cols[surnameIdx] : undefined
-      const res = await fetch('/api/create-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: surname || undefined }) })
-      const json = await res.json()
-      if (!res.ok) { skipped++; continue }
-      await supabase.from('profiles').upsert({
-        id: json.id, email,
-        firstname: firstIdx >= 0 ? cols[firstIdx] : null,
-        surname: surnameIdx >= 0 ? cols[surnameIdx] : null,
-        professional_title: titleIdx >= 0 ? cols[titleIdx] : null,
-        division: divisionIdx >= 0 ? cols[divisionIdx] : null,
-        portfolio: portfolioIdx >= 0 ? cols[portfolioIdx] : null,
-        role: 'reviewer',
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password: surname || undefined,
+          firstname: firstIdx >= 0 ? cols[firstIdx] : undefined,
+          surname,
+          professional_title: titleIdx >= 0 ? cols[titleIdx] : undefined,
+          division: divisionIdx >= 0 ? cols[divisionIdx] : undefined,
+          portfolio: portfolioIdx >= 0 ? cols[portfolioIdx] : undefined,
+          role: 'reviewer',
+        }),
       })
+      if (!res.ok) { skipped++; continue }
       created++
     }
     setImportResult(`Imported ${created} reviewer(s). Skipped ${skipped}.`)
