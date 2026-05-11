@@ -15,14 +15,26 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_KEY!
   )
 
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-  })
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('id, surname')
+    .eq('email', email)
+    .single()
 
-  if (error || !data?.properties?.email_otp) {
-    return NextResponse.json({ error: 'Failed to generate session' }, { status: 500 })
+  if (!profile?.surname) {
+    return NextResponse.json({ error: 'No surname on file for this user' }, { status: 404 })
   }
 
-  return NextResponse.json({ token: data.properties.email_otp })
+  // Pad short surnames so they meet Supabase password min length
+  const newPassword = profile.surname.length >= 6 ? profile.surname : profile.surname + '2024'
+
+  const { error: updateError } = await admin.auth.admin.updateUserById(profile.id, {
+    password: newPassword,
+  })
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ password: newPassword })
 }

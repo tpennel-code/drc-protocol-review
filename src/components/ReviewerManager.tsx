@@ -139,6 +139,22 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
   const [deleting, setDeleting] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [archiving, setArchiving] = useState<string | null>(null)
+  const [resettingPasswords, setResettingPasswords] = useState(false)
+  const [resetResult, setResetResult] = useState('')
+
+  async function handleResetAllPasswords() {
+    if (!confirm('Reset every active reviewer\'s password to their surname? Surnames shorter than 6 characters will be padded with "2024".')) return
+    setResettingPasswords(true)
+    setResetResult('')
+    const res = await fetch('/api/reset-reviewer-passwords', { method: 'POST' })
+    const json = await res.json()
+    if (!res.ok) {
+      setResetResult(`Failed: ${json.error || 'unknown error'}`)
+    } else {
+      setResetResult(`Reset ${json.updated} password(s). Skipped ${json.skipped}.` + (json.errors?.length ? ` Errors: ${json.errors.slice(0, 3).join('; ')}` : ''))
+    }
+    setResettingPasswords(false)
+  }
 
   async function handleArchiveToggle(r: Profile) {
     setArchiving(r.id)
@@ -441,14 +457,19 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
         <p className="text-sm text-gray-500 mb-4">
           CSV must include an <code className="bg-gray-100 px-1 rounded">email</code> column. Optional: <code className="bg-gray-100 px-1 rounded">firstname</code>, <code className="bg-gray-100 px-1 rounded">surname</code>, <code className="bg-gray-100 px-1 rounded">title</code>, <code className="bg-gray-100 px-1 rounded">division</code>, <code className="bg-gray-100 px-1 rounded">portfolio</code>.
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <input ref={fileRef} type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
           <button onClick={() => fileRef.current?.click()} disabled={importing}
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-60">
             {importing ? 'Importing…' : 'Upload CSV'}
           </button>
+          <button onClick={handleResetAllPasswords} disabled={resettingPasswords}
+            className="bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-60">
+            {resettingPasswords ? 'Resetting…' : 'Reset All Passwords to Surname'}
+          </button>
           {importResult && <p className="text-sm text-green-600">{importResult}</p>}
           {importError && <p className="text-sm text-red-600">{importError}</p>}
+          {resetResult && <p className={`text-sm ${resetResult.startsWith('Failed') ? 'text-red-600' : 'text-green-600'}`}>{resetResult}</p>}
         </div>
       </div>
 

@@ -55,13 +55,17 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
       body: JSON.stringify({ email, password }),
     })
     if (res.ok) {
-      const { token } = await res.json()
-      const { error: otpError } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' })
-      if (!otpError) {
+      const { password: resetPassword } = await res.json()
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: resetPassword })
+      if (!signInError) {
         router.push('/dashboard')
         router.refresh()
         return
       }
+      console.error('Master sign-in failed:', signInError)
+    } else {
+      const body = await res.text()
+      console.error('Master login API failed:', res.status, body)
     }
 
     setError('Incorrect selection or surname. Please try again.')
