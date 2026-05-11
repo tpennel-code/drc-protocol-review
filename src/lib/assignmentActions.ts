@@ -24,6 +24,14 @@ export async function saveAssignments(
     return { error: 'Unauthorized' }
   }
 
+  // Capture existing reviewers BEFORE wiping, so we can email only the
+  // newly-added ones after the save.
+  const { data: existing } = await supabase
+    .from('protocol_assignments')
+    .select('reviewer_id')
+    .eq('protocol_id', protocolId)
+  const previousReviewerIds = new Set((existing ?? []).map(r => r.reviewer_id))
+
   const { error: deleteError } = await supabase
     .from('protocol_assignments')
     .delete()
@@ -49,9 +57,13 @@ export async function saveAssignments(
   revalidatePath(`/dashboard/executive/protocols/${protocolId}`)
   revalidatePath('/dashboard/executive')
 
-  // Send assignment notification emails (fire and forget — don't fail the save if email fails)
-  if (toInsert.length > 0) {
-    sendAssignmentEmails(supabase, protocolId, toInsert.map(r => r.reviewer_id))
+  // Email only reviewers who weren't already assigned to this protocol.
+  const newlyAssignedIds = toInsert
+    .map(r => r.reviewer_id)
+    .filter(id => !previousReviewerIds.has(id))
+
+  if (newlyAssignedIds.length > 0) {
+    sendAssignmentEmails(supabase, protocolId, newlyAssignedIds)
       .catch(err => console.error('Assignment emails failed:', err))
   }
 
