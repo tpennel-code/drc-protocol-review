@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 
 export async function saveAssignments(
   protocolId: string,
@@ -51,7 +51,8 @@ export async function saveAssignments(
 
   // Send assignment notification emails (fire and forget — don't fail the save if email fails)
   if (toInsert.length > 0) {
-    sendAssignmentEmails(supabase, protocolId, toInsert.map(r => r.reviewer_id)).catch(() => {})
+    sendAssignmentEmails(supabase, protocolId, toInsert.map(r => r.reviewer_id))
+      .catch(err => console.error('Assignment emails failed:', err))
   }
 
   return {}
@@ -74,14 +75,12 @@ async function sendAssignmentEmails(
     ? [chair.professional_title, chair.firstname, chair.surname].filter(Boolean).join(' ')
     : 'Dr Claire Warden'
 
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
   for (const reviewer of reviewers) {
     if (!reviewer.email || reviewer.email.endsWith('@drc.local')) continue
     const salutation = [reviewer.professional_title, reviewer.surname].filter(Boolean).join(' ')
-    await resend.emails.send({
-      from: 'DRC <onboarding@resend.dev>',
+    const { error } = await sendEmail({
       to: reviewer.email,
       subject: `DRC Protocol Assigned – ${protocol.serial_text ?? protocolId}`,
       text: `Dear ${salutation}
@@ -99,5 +98,6 @@ Kind regards
 ${chairName}
 Chair: Surgical DRC`,
     })
+    if (error) console.error(`Assignment email to ${reviewer.email} failed:`, error)
   }
 }
