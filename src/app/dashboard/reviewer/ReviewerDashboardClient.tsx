@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { OutcomeStatus } from '@/lib/types'
+import { declineAssignment } from '@/lib/assignmentActions'
 
 const outcomeBadge: Record<OutcomeStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -57,7 +59,27 @@ export default function ReviewerDashboardClient({
   reviewedIds: Set<string>
   reviewSubmittedAt: Map<string, string>
 }) {
+  const router = useRouter()
   const [filter, setFilter] = useState<'all' | 'pending'>('all')
+  const [declineTarget, setDeclineTarget] = useState<Assignment | null>(null)
+  const [declineReason, setDeclineReason] = useState('')
+  const [declining, setDeclining] = useState(false)
+  const [declineError, setDeclineError] = useState('')
+
+  async function handleDecline() {
+    if (!declineTarget) return
+    setDeclining(true)
+    setDeclineError('')
+    const { error } = await declineAssignment(declineTarget.id, declineReason.trim())
+    setDeclining(false)
+    if (error) {
+      setDeclineError(error)
+      return
+    }
+    setDeclineTarget(null)
+    setDeclineReason('')
+    router.refresh()
+  }
 
   const visible = filter === 'pending'
     ? assignments.filter(a => !reviewedIds.has(a.protocol?.id))
@@ -77,6 +99,43 @@ export default function ReviewerDashboardClient({
 
   return (
     <div>
+      {/* Decline confirmation modal */}
+      {declineTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Decline to Review?</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              You are about to decline the review of <strong>{declineTarget.protocol?.serial_text ?? 'this protocol'}</strong>. The Chair will be notified by email and can assign another reviewer.
+            </p>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Reason (optional)</label>
+            <textarea
+              value={declineReason}
+              onChange={e => setDeclineReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. Conflict of interest, on leave during meeting…"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+            />
+            {declineError && <p className="text-sm text-red-600 mb-2">{declineError}</p>}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setDeclineTarget(null); setDeclineReason(''); setDeclineError('') }}
+                disabled={declining}
+                className="text-gray-500 hover:text-gray-700 text-sm px-4 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDecline}
+                disabled={declining}
+                className="bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2 rounded-lg text-sm transition disabled:opacity-60"
+              >
+                {declining ? 'Declining…' : 'Decline & notify Chair'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -127,13 +186,12 @@ export default function ReviewerDashboardClient({
             const reviewed = reviewedIds.has(protocol?.id)
             const submittedAt = reviewSubmittedAt.get(protocol?.id)
             return (
-              <Link
+              <div
                 key={a.id}
-                href={`/dashboard/reviewer/${protocol?.id}`}
-                className="block bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-400 hover:shadow-sm transition"
+                className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-400 hover:shadow-sm transition"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
+                  <Link href={`/dashboard/reviewer/${protocol?.id}`} className="flex-1 min-w-0 block">
                     <p className="font-semibold text-gray-900 truncate">{protocol?.title || 'Untitled Protocol'}</p>
                     <p className="text-sm text-gray-500 mt-0.5">
                       {protocol?.serial_text} · {protocol?.applicant_firstname} {protocol?.applicant_surname}
@@ -147,7 +205,7 @@ export default function ReviewerDashboardClient({
                         <span className="text-xs text-green-600">· Submitted {formatDate(submittedAt)}</span>
                       )}
                     </div>
-                  </div>
+                  </Link>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${outcomeBadge[outcome]}`}>
                       {outcomeLabel[outcome]}
@@ -155,11 +213,19 @@ export default function ReviewerDashboardClient({
                     {reviewed ? (
                       <span className="text-xs text-green-600 font-medium">Review submitted</span>
                     ) : (
-                      <span className="text-xs text-orange-500 font-medium">Awaiting your review</span>
+                      <>
+                        <span className="text-xs text-orange-500 font-medium">Awaiting your review</span>
+                        <button
+                          onClick={() => { setDeclineTarget(a); setDeclineReason(''); setDeclineError('') }}
+                          className="text-xs text-red-600 hover:text-red-800 font-medium hover:underline"
+                        >
+                          Decline to review
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>

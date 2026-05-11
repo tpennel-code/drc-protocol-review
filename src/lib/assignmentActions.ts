@@ -70,6 +70,85 @@ export async function saveAssignments(
   return {}
 }
 
+export async function declineAssignment(
+  assignmentId: string,
+  reason: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Load the assignment + protocol + the declining reviewer's profile in one round-trip.
+  const { data: assignment } = await supabase
+    .from('protocol_assignments')
+    .select(`
+      id, reviewer_id, protocol_id,
+      protocol:protocols(title, serial_text, meeting_date)
+    `)
+    .eq('id', assignmentId)
+    .single()
+
+  if (!assignment) return { error: 'Assignment not found' }
+  if (assignment.reviewer_id !== user.id) return { error: 'Unauthorized' }
+
+  const { error: deleteError } = await supabase
+    .from('protocol_assignments')
+    .delete()
+    .eq('id', assignmentId)
+
+  if (deleteError) return { error: `Delete failed: ${deleteError.message}` }
+
+  revalidatePath('/dashboard/reviewer')
+  revalidatePath(`/dashboard/executive/protocols/${assignment.protocol_id}`)
+  revalidatePath('/dashboard/executive')
+
+  // Notify chair (fire and forget)
+  sendDeclineEmail(supabase, user.id, assignment, reason)
+    .catch(err => console.error('Decline email failed:', err))
+
+  return {}
+}
+
+async function sendDeclineEmail(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  reviewerId: string,
+  assignment: { protocol_id: string; protocol: { title: string | null; serial_text: string | null; meeting_date: string | null } | { title: string | null; serial_text: string | null; meeting_date: string | null }[] | null },
+  reason: string,
+) {
+  const [{ data: reviewer }, { data: chair }] = await Promise.all([
+    supabase.from('profiles').select('professional_title, firstname, surname').eq('id', reviewerId).single(),
+    supabase.from('profiles').select('email, professional_title, firstname, surname').eq('portfolio', 'Chairperson').single(),
+  ])
+
+  if (!chair?.email || chair.email.endsWith('@drc.local')) return
+
+  const protocol = Array.isArray(assignment.protocol) ? assignment.protocol[0] : assignment.protocol
+  const reviewerName = reviewer
+    ? [reviewer.professional_title, reviewer.firstname, reviewer.surname].filter(Boolean).join(' ')
+    : 'A reviewer'
+  const chairSalutation = [chair.professional_title, chair.surname].filter(Boolean).join(' ')
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
+  const { error } = await sendEmail({
+    to: chair.email,
+    subject: `DRC Protocol Review Declined – ${protocol?.serial_text ?? assignment.protocol_id}`,
+    text: `Dear ${chairSalutation}
+
+${reviewerName} has declined to review the following protocol:
+
+Protocol No.: ${protocol?.serial_text ?? '—'}
+Title: ${protocol?.title ?? 'Untitled Protocol'}
+${protocol?.meeting_date ? `Meeting Date: ${protocol.meeting_date}` : ''}
+${reason ? `\nReason given:\n${reason}\n` : ''}
+Please log in to assign a replacement reviewer:
+${appUrl}/dashboard/executive/protocols/${assignment.protocol_id}
+
+Kind regards
+DRC Protocol Review System`,
+  })
+  if (error) console.error('Decline notification to chair failed:', error)
+}
+
 async function sendAssignmentEmails(
   supabase: Awaited<ReturnType<typeof createClient>>,
   protocolId: string,
