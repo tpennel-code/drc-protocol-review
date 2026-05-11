@@ -23,7 +23,7 @@ export async function deleteProtocol(protocolId: string): Promise<{ error?: stri
   // Use service role to bypass RLS for delete
   const adminClient = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_KEY!,
   )
 
   const { error } = await adminClient
