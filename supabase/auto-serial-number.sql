@@ -38,7 +38,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Attach trigger to protocols table
 DROP TRIGGER IF EXISTS trg_auto_serial_text ON public.protocols;

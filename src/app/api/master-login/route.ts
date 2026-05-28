@@ -25,8 +25,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No surname on file for this user' }, { status: 404 })
   }
 
-  // Pad short surnames so they meet Supabase password min length
-  const newPassword = profile.surname.length >= 6 ? profile.surname : profile.surname + '2024'
+  // Append 123, padding to 6 chars for very short surnames
+  const newPassword = (profile.surname + '123').padEnd(6, '0')
 
   const { error: updateError } = await admin.auth.admin.updateUserById(profile.id, {
     email,

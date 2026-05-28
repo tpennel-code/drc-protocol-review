@@ -196,7 +196,7 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
                   </div>
                 </div>
               </Link>
-              <div className="flex flex-col items-end justify-start gap-2 p-3 shrink-0">
+              <div className="flex flex-col items-end justify-start gap-2 p-3 shrink-0 w-44">
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${outcomeBadge[outcome]}`}>
                   {outcomeLabel[outcome]}
                 </span>

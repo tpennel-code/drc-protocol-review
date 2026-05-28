@@ -143,7 +143,7 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
   const [resetResult, setResetResult] = useState('')
 
   async function handleResetAllPasswords() {
-    if (!confirm('Reset every active reviewer\'s password to their surname? Surnames shorter than 6 characters will be padded with "2024".')) return
+    if (!confirm('Reset every active reviewer\'s password to <Surname>123? Very short surnames will be padded with "0" to meet the 6-character minimum.')) return
     setResettingPasswords(true)
     setResetResult('')
     const res = await fetch('/api/reset-reviewer-passwords', { method: 'POST' })
@@ -466,7 +466,7 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
           </button>
           <button onClick={handleResetAllPasswords} disabled={resettingPasswords}
             className="bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-60">
-            {resettingPasswords ? 'Resetting…' : 'Reset All Passwords to Surname'}
+            {resettingPasswords ? 'Resetting…' : 'Reset All Passwords to Surname123'}
           </button>
           {importResult && <p className="text-sm text-green-600">{importResult}</p>}
           {importError && <p className="text-sm text-red-600">{importError}</p>}

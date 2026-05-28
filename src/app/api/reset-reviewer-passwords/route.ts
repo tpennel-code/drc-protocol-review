@@ -29,7 +29,7 @@ export async function POST() {
 
   for (const p of profiles) {
     if (p.archived || !p.surname) { skipped++; continue }
-    const newPassword = p.surname.length >= 6 ? p.surname : p.surname + '2024'
+    const newPassword = (p.surname + '123').padEnd(6, '0')
     const { error } = await admin.auth.admin.updateUserById(p.id, {
       email: p.email,
       email_confirm: true,
