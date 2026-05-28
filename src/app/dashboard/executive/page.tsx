@@ -56,7 +56,7 @@ export default async function ExecutiveDashboard() {
 
   const reviewersByProtocol: Record<string, { name: string; submitted: boolean }[]> = {}
   for (const a of assignments ?? []) {
-    const r = a.reviewer as { professional_title: string | null; firstname: string | null; surname: string | null } | null
+    const r = a.reviewer as unknown as { professional_title: string | null; firstname: string | null; surname: string | null } | null
     if (!r) continue
     const name = [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' ')
     const submitted = submittedSet.has(`${a.protocol_id}:${a.reviewer_id}`)

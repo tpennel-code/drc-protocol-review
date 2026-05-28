@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -14,7 +14,7 @@ function formatDate(iso: string) {
 }
 
 async function downloadAttachment(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   storagePath: string | null,
   filename: string,
 ) {
@@ -168,7 +168,7 @@ Data Review Committee · University of Cape Town
     downloadAttachment(supabaseAdmin, protocolFilePath ?? null, protocolFile || 'protocol.docx'),
     downloadAttachment(supabaseAdmin, datasheetFilePath ?? null, datasheetFile || 'datasheet'),
     downloadAttachment(supabaseAdmin, supplementaryFilePath ?? null, supplementaryFile || 'supplementary'),
-  ])).filter((a): a is { filename: string; content: Buffer } => a !== null)
+  ])).filter((a): a is NonNullable<typeof a> => a !== null)
 
   const resend = new Resend(apiKey)
   const { error } = await resend.emails.send({

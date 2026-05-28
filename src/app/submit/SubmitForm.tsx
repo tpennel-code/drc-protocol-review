@@ -112,7 +112,7 @@ export default function SubmitForm() {
     setChecklist(true)
 
     const attachFetched = async (
-      ref: React.RefObject<HTMLInputElement>,
+      ref: React.RefObject<HTMLInputElement | null>,
       url: string,
       filename: string,
       type: string,

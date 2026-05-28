@@ -63,8 +63,8 @@ export async function POST(req: Request) {
   const skipped: string[] = []
 
   for (const a of assignments) {
-    const protocol = a.protocol as { id: string; title: string | null; serial_text: string | null; meeting_date: string | null } | null
-    const reviewer = a.reviewer as { email: string | null; professional_title: string | null; firstname: string | null; surname: string | null } | null
+    const protocol = a.protocol as unknown as { id: string; title: string | null; serial_text: string | null; meeting_date: string | null } | null
+    const reviewer = a.reviewer as unknown as { email: string | null; professional_title: string | null; firstname: string | null; surname: string | null } | null
 
     if (!protocol || !reviewer) continue
     if (!reviewer.email || reviewer.email.endsWith('@drc.local')) { skipped.push(reviewer.email ?? ''); continue }

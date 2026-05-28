@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
 import { ApprovalLetterPDF } from '@/lib/approval-letter-pdf'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { createElement } from 'react'
+import { createElement, type ReactElement } from 'react'
 
 const LETTER_CONFIG = {
   approved: {
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   const drcLogoBase64 = readFileSync(join(process.cwd(), 'public', 'drc-logo.png')).toString('base64')
 
   const pdfBuffer = await renderToBuffer(
-    createElement(ApprovalLetterPDF, { protocol, chair, uctLogoBase64, drcLogoBase64, letterType: type })
+    createElement(ApprovalLetterPDF, { protocol, chair, uctLogoBase64, drcLogoBase64, letterType: type }) as ReactElement<DocumentProps>
   )
 
   const chairName = chair
