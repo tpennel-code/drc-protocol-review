@@ -97,50 +97,6 @@ export default function SubmitForm() {
   const [error, setError]                   = useState('')
   const [showModal, setShowModal]           = useState(false)
 
-  async function fillTestData() {
-    setFirstname('Carl-Adriaan')
-    setSurname('Hugo')
-    setEmail('cahugo6@gmail.com')
-    setProfTitle('Dr')
-    setFastTrack('yes')
-    setProtocolTitle('The Impact of Donor Vessel Multiplicity and Kidney Laterality on Donor Outcomes in a South African Cohort')
-    setFileNaming(true)
-    setStudyType('Retrospective Cohort')
-    setDegree('Non-degree purpose')
-    setSupervisor('approved')
-    setSubmissionType('First Submission')
-    setChecklist(true)
-
-    const attachFetched = async (
-      ref: React.RefObject<HTMLInputElement | null>,
-      url: string,
-      filename: string,
-      type: string,
-    ) => {
-      if (!ref.current) return
-      const res = await fetch(url)
-      const blob = await res.blob()
-      const dt = new DataTransfer()
-      dt.items.add(new File([blob], filename, { type }))
-      ref.current.files = dt.files
-    }
-
-    await Promise.all([
-      attachFetched(
-        protocolFileRef,
-        '/test-files/test-protocol.docx',
-        'ft-hugo-renal-transplant.docx',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ),
-      attachFetched(
-        datasheetFileRef,
-        '/test-files/test-datasheet.xlsx',
-        'ft-hugo-renal-transplant-data-sheet.xlsx',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      ),
-    ])
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
@@ -249,17 +205,6 @@ export default function SubmitForm() {
         </div>
       </div>
     )}
-
-    <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-2">
-      <span className="text-xs text-amber-700 font-medium">Sandbox / testing mode</span>
-      <button
-        type="button"
-        onClick={() => { fillTestData() }}
-        className="text-xs font-medium text-amber-800 border border-amber-300 bg-white px-3 py-1.5 rounded-lg hover:bg-amber-50 transition"
-      >
-        Autofill test data
-      </button>
-    </div>
 
     <form onSubmit={handleSubmit} className="space-y-8">
 

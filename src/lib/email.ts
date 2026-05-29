@@ -1,6 +1,31 @@
 import { Resend } from 'resend'
+import { createClient } from '@supabase/supabase-js'
 
-const DEFAULT_FROM = 'Surgical DRC <onboarding@resend.dev>'
+const DEFAULT_FROM = 'Surgical DRC <noreply@surgicaldrc.co.za>'
+
+// We send from a no-reply address, so replies are routed to the DRC chair's
+// inbox via a Reply-To header. The chair is the profile whose portfolio is
+// 'Chairperson'. Memoised per instance — the chair rarely changes, and a stale
+// value only lasts until the next cold start.
+let chairReplyToCache: string | null | undefined
+
+async function getChairReplyTo(): Promise<string | undefined> {
+  if (chairReplyToCache !== undefined) return chairReplyToCache ?? undefined
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_KEY
+  if (!url || !key) return undefined
+
+  const admin = createClient(url, key)
+  const { data } = await admin
+    .from('profiles')
+    .select('email')
+    .eq('portfolio', 'Chairperson')
+    .single()
+
+  chairReplyToCache = data?.email ?? null
+  return chairReplyToCache ?? undefined
+}
 
 type Attachment = {
   filename: string
@@ -12,6 +37,7 @@ export type EmailArgs = {
   to: string | string[]
   cc?: string | string[]
   bcc?: string | string[]
+  replyTo?: string | string[]
   subject: string
   text?: string
   html?: string
@@ -38,6 +64,7 @@ export async function sendEmail(args: EmailArgs) {
 
   const testRecipient = process.env.EMAIL_TEST_RECIPIENT?.trim()
   const from = args.from ?? DEFAULT_FROM
+  const replyTo = args.replyTo ?? (await getChairReplyTo())
 
   let payload: EmailArgs & { from: string }
 
@@ -59,6 +86,7 @@ export async function sendEmail(args: EmailArgs) {
       to: testRecipient,
       cc: undefined,
       bcc: undefined,
+      replyTo,
       subject: `[TEST] ${args.subject}`,
       text: args.text ? `${notice}\n${args.text}` : undefined,
       html: args.html
@@ -66,7 +94,11 @@ export async function sendEmail(args: EmailArgs) {
         : undefined,
     }
   } else {
-    payload = { ...args, from }
+    payload = {
+      ...args,
+      from,
+      replyTo,
+    }
   }
 
   const resend = new Resend(apiKey)
