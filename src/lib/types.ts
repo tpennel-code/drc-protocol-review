@@ -15,6 +15,7 @@ export interface Profile {
   role: UserRole
   signature_url: string | null
   archived: boolean
+  must_change_password: boolean
   created_at: string
 }
 

@@ -39,6 +39,8 @@ export async function POST() {
       errors.push(`${p.surname}: ${error.message}`)
       skipped++
     } else {
+      // Force a password change on next login.
+      await admin.from('profiles').update({ must_change_password: true }).eq('id', p.id)
       updated++
     }
   }

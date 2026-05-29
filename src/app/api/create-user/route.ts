@@ -38,6 +38,7 @@ export async function POST(req: Request) {
     division: division || null,
     portfolio: portfolio || null,
     role: role || 'reviewer',
+    must_change_password: true,
   })
 
   if (profileError) {
