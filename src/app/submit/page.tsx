@@ -19,8 +19,8 @@ export default function SubmitPage() {
 
       <div className="relative max-w-2xl mx-auto">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Protocol Submission</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-4xl font-bold text-gray-900">Protocol Submission</h1>
+          <p className="text-xl text-gray-500 mt-2">
             Department of Surgery Research Committee · University of Cape Town
           </p>
         </div>
