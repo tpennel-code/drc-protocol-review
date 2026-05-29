@@ -83,6 +83,43 @@ function SendRemindersButton() {
   )
 }
 
+function DownloadCsvButton() {
+  const [state, setState] = useState<'idle' | 'downloading' | 'error'>('idle')
+
+  async function handleDownload() {
+    setState('downloading')
+    try {
+      const res = await fetch('/api/export-protocols')
+      if (!res.ok) throw new Error(String(res.status))
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `protocols-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setState('idle')
+    } catch {
+      setState('error')
+    }
+  }
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={state === 'downloading'}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 border border-gray-300 bg-white px-3 py-1.5 rounded-lg hover:border-gray-400 transition disabled:opacity-60"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      {state === 'downloading' ? 'Preparing…' : state === 'error' ? 'Failed — retry' : 'Download CSV'}
+    </button>
+  )
+}
+
 export default function ExecutiveDashboardTabs({
   protocolsContent,
   meetingDatesContent,
@@ -110,7 +147,12 @@ export default function ExecutiveDashboardTabs({
             </button>
           ))}
         </div>
-        {active === 'Protocols' && <div className="pb-1"><SendRemindersButton /></div>}
+        {active === 'Protocols' && (
+          <div className="flex items-end gap-2 pb-1">
+            <DownloadCsvButton />
+            <SendRemindersButton />
+          </div>
+        )}
       </div>
       {active === 'Protocols' ? protocolsContent : meetingDatesContent}
     </div>
