@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { EMAIL_FROM } from '@/lib/email'
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -153,7 +154,6 @@ Data Review Committee · University of Cape Town
   )
 
   // Fetch all exec/admin emails to CC
-  // TODO: remove the email filter below when ready to notify all execs in production
   const { data: execProfiles } = await supabaseAdmin
     .from('profiles')
     .select('email')
@@ -161,7 +161,7 @@ Data Review Committee · University of Cape Town
 
   const ccEmails = (execProfiles ?? [])
     .map(p => p.email as string | null)
-    .filter((e): e is string => e === 'tim.pennel@uct.ac.za')
+    .filter((e): e is string => !!e && !e.endsWith('@drc.local'))
 
   // Download files for attachments
   const attachments = (await Promise.all([
@@ -172,7 +172,7 @@ Data Review Committee · University of Cape Town
 
   const resend = new Resend(apiKey)
   const { error } = await resend.emails.send({
-    from: 'DRC <onboarding@resend.dev>',
+    from: EMAIL_FROM,
     to: email,
     cc: ccEmails.length > 0 ? ccEmails : undefined,
     subject,

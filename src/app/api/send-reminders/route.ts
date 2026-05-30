@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { EMAIL_FROM } from '@/lib/email'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 function fmtDate(iso: string) {
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
     const salutation = [reviewer.professional_title, reviewer.surname].filter(Boolean).join(' ')
 
     await resend.emails.send({
-      from: 'DRC <onboarding@resend.dev>',
+      from: EMAIL_FROM,
       to: reviewer.email,
       subject: `DRC Review Reminder – ${protocol.serial_text ?? protocol.id}`,
       text: `Dear ${salutation}

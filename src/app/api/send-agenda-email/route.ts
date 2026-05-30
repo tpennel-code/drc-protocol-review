@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { EMAIL_FROM } from '@/lib/email'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 function fmtDate(iso: string) {
@@ -133,7 +134,7 @@ CHAIR: SURGICAL DRC
   const resend = new Resend(process.env.RESEND_API_KEY)
 
   const { error } = await resend.emails.send({
-    from: 'DRC <onboarding@resend.dev>',
+    from: EMAIL_FROM,
     to: allRecipients,
     subject: `DRC Meeting Agenda – ${meetingDateFormatted}`,
     text: emailBody,

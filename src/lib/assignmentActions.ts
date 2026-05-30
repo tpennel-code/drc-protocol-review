@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Resend } from 'resend'
+import { EMAIL_FROM } from '@/lib/email'
 
 export async function saveAssignments(
   protocolId: string,
@@ -81,7 +82,7 @@ async function sendAssignmentEmails(
     if (!reviewer.email || reviewer.email.endsWith('@drc.local')) continue
     const salutation = [reviewer.professional_title, reviewer.surname].filter(Boolean).join(' ')
     await resend.emails.send({
-      from: 'DRC <onboarding@resend.dev>',
+      from: EMAIL_FROM,
       to: reviewer.email,
       subject: `DRC Protocol Assigned – ${protocol.serial_text ?? protocolId}`,
       text: `Dear ${salutation}

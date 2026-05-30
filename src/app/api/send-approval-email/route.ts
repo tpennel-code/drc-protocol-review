@@ -6,6 +6,7 @@ import { ApprovalLetterPDF } from '@/lib/approval-letter-pdf'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { createElement, type ReactElement } from 'react'
+import { EMAIL_FROM } from '@/lib/email'
 
 const LETTER_CONFIG = {
   approved: {
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
   const resend = new Resend(process.env.RESEND_API_KEY)
 
   const { error } = await resend.emails.send({
-    from: 'DRC <onboarding@resend.dev>',
+    from: EMAIL_FROM,
     to: protocol.applicant_email,
     subject: config.subject,
     text: emailBody,
