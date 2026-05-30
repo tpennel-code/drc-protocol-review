@@ -30,6 +30,7 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
                   <Link href="/dashboard/executive/reviewers" className="text-gray-600 hover:text-blue-700 transition">Reviewers</Link>
                   <Link href="/dashboard/executive/stats" className="text-gray-600 hover:text-blue-700 transition">Stats</Link>
                   <Link href="/dashboard/executive/agenda" className="text-gray-600 hover:text-blue-700 transition">Agenda</Link>
+                  <Link href="/dashboard/executive/import" className="text-gray-600 hover:text-blue-700 transition">Import</Link>
                   {profile?.role === 'admin' && (
                     <Link href="/dashboard/admin" className="text-gray-600 hover:text-blue-700 transition">Executives</Link>
                   )}
