@@ -147,8 +147,7 @@ Data Review Committee · University of Cape Town
     process.env.SUPABASE_SERVICE_KEY!,
   )
 
-  // Fetch all exec/admin emails to CC
-  // TODO: remove the email filter below when ready to notify all execs in production
+  // Fetch all exec/admin emails to CC (excluding internal @drc.local placeholders)
   const { data: execProfiles } = await supabaseAdmin
     .from('profiles')
     .select('email')
@@ -156,7 +155,7 @@ Data Review Committee · University of Cape Town
 
   const ccEmails = (execProfiles ?? [])
     .map(p => p.email as string | null)
-    .filter((e): e is string => e === 'tim.pennel@uct.ac.za')
+    .filter((e): e is string => !!e && !e.endsWith('@drc.local'))
 
   // Download files for attachments
   const attachments = (await Promise.all([
