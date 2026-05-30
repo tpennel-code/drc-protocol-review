@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -11,6 +11,9 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
   const router = useRouter()
   const [selectedId, setSelectedId] = useState('')
   const [surname, setSurname] = useState('')
+  const passwordRef = useRef<HTMLInputElement>(null)
+
+  const selectedEmail = reviewers.find(r => r.id === selectedId)?.email ?? ''
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
@@ -76,7 +79,10 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
     e.preventDefault()
     const reviewer = reviewers.find(r => r.id === selectedId)
     if (!reviewer) return
-    await signIn(reviewer.email, surname)
+    // Prefer the live DOM value: browser autofill doesn't always fire React's
+    // onChange, so the `surname` state can lag behind what's actually shown.
+    const password = passwordRef.current?.value || surname
+    await signIn(reviewer.email, password)
   }
 
   return (
@@ -101,6 +107,22 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
+            {/*
+              Hidden username field so password managers can associate the saved
+              password with the selected person's email. Kept visually hidden
+              (not display:none, which managers ignore) and synced to the dropdown.
+            */}
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              tabIndex={-1}
+              aria-hidden="true"
+              readOnly
+              value={selectedEmail}
+              className="absolute h-0 w-0 overflow-hidden border-0 p-0 opacity-0"
+            />
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
               <select
@@ -119,7 +141,10 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <input
+                ref={passwordRef}
                 type="password"
+                name="password"
+                autoComplete="current-password"
                 required
                 value={surname}
                 onChange={e => setSurname(e.target.value)}
