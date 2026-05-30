@@ -391,7 +391,7 @@ export default function SubmitForm() {
 
       <button
         type="submit" disabled={uploading}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl text-sm transition disabled:opacity-60"
+        className="inline-flex bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-3 rounded-xl text-sm transition disabled:opacity-60"
       >
         {uploading ? progress || 'Submitting…' : 'Submit Protocol'}
       </button>
