@@ -106,8 +106,8 @@ export default function InstructionsPage() {
 
         <ol className="my-4">
           <Step n={1} title="Open the site & choose your name">
-            Go to <a className="text-blue-600 hover:underline" href="https://surgicaldrc.co.za">surgicaldrc.co.za</a> and
-            pick your name from the <strong>Name</strong> dropdown. You don&apos;t create an account — your name is
+            Go to <a className="text-blue-600 hover:underline" href="https://surgicaldrc.co.za/login">surgicaldrc.co.za/login</a> and
+            pick your name from the <strong>Name</strong>{' '}dropdown. You don&apos;t create an account — your name is
             already in the system.
           </Step>
           <Step n={2} title="Enter your password">
