@@ -96,6 +96,8 @@ ${resubNumber ? `Re-Submission Protocol Number\n${resubNumber}\n\n` : ''}Checkli
 ${checklist ? 'I have read the protocol checklist' : 'Not confirmed'}
 
 ---
+Although this email is sent from a no-reply address, you can simply reply to it — your reply goes directly to the DRC Chair.
+
 Data Review Committee · University of Cape Town
 `
 
@@ -138,6 +140,10 @@ Data Review Committee · University of Cape Town
     <p style="margin-top:32px;font-size:13px;color:#6b7280">
       Your protocol has been received and will be reviewed by the DRC.
       You will be contacted at <strong>${email}</strong> with the outcome.
+    </p>
+    <p style="margin-top:16px;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:13px;color:#1e3a8a">
+      Although this email is sent from a no-reply address, you can simply <strong>reply</strong> to it —
+      your reply goes directly to the DRC Chair.
     </p>
   </div>
 </div>`

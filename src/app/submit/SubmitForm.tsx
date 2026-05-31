@@ -192,9 +192,14 @@ export default function SubmitForm() {
           <p className="text-sm text-gray-500 mb-1">
             Thank you, <span className="font-medium text-gray-700">{firstname} {surname}</span>.
           </p>
-          <p className="text-sm text-gray-500 mb-6">
+          <p className="text-sm text-gray-500 mb-3">
             A confirmatory email has been sent to <span className="font-medium text-gray-700">{email}</span>.
             The DRC will contact you with the outcome of the review.
+          </p>
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-6">
+            📩 If you don&apos;t see the confirmation email within a few minutes, please check your
+            <span className="font-medium"> spam / junk folder</span> and mark it “Not spam” so future
+            DRC emails reach your inbox.
           </p>
           <button
             onClick={() => window.location.reload()}
