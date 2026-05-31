@@ -38,6 +38,7 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
               ) : (
                 <Link href="/dashboard/reviewer" className="text-gray-600 hover:text-blue-700 transition">My Protocols</Link>
               )}
+              <Link href="/instructions" className="text-gray-600 hover:text-blue-700 transition">Help</Link>
             </div>
           </div>
           <div className="flex items-center gap-4">

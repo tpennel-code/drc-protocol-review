@@ -178,6 +178,11 @@ export default function LoginForm({ reviewers }: { reviewers: Reviewer[] }) {
             </div>
           </form>
         </div>
+
+        <p className="text-center text-sm text-gray-500">
+          New to the site?{' '}
+          <a href="/instructions" className="text-blue-600 hover:underline">View the instructions</a>
+        </p>
       </div>
     </div>
   )
