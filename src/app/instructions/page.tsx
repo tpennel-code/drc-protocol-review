@@ -126,8 +126,8 @@ export default function InstructionsPage() {
         </Callout>
         <Callout tone="warn">
           🔑 <strong>Forgotten your password?</strong> Select your name, then click{' '}
-          <strong>&quot;Forgot password?&quot;</strong> to get a reset link by email. (If it doesn&apos;t arrive,
-          check your spam/junk folder — see section 5.)
+          <strong>&quot;Forgot password?&quot;</strong>{' '}— a reset link is emailed to the address we have on
+          record for you. (If it doesn&apos;t arrive, check your spam/junk folder — see section 5.)
         </Callout>
 
         {/* 2. REVIEWERS */}
