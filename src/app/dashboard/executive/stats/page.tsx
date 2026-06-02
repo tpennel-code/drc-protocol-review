@@ -56,7 +56,7 @@ export default async function StatsPage() {
     supabase.from('protocols').select('final_outcome, year').eq('omit_record', false),
     supabase.from('protocol_assignments').select('protocol_id, reviewer_id, assigned_at'),
     supabase.from('reviews').select('protocol_id, reviewer_id, submitted_at'),
-    supabase.from('profiles').select('id, professional_title, firstname, surname').eq('role', 'reviewer'),
+    supabase.from('profiles').select('id, professional_title, firstname, surname').in('role', ['reviewer', 'executive', 'admin']),
   ])
 
   // Outcome counts
