@@ -63,6 +63,7 @@ type Protocol = {
   approval_date: string | null
   meeting_date: string | null
   final_outcome: OutcomeStatus
+  fast_tracked: boolean | null
 }
 
 export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAdmin = false }: { protocols: Protocol[], reviewersByProtocol?: Record<string, { name: string; submitted: boolean }[]>, isAdmin?: boolean }) {
@@ -200,6 +201,11 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${outcomeBadge[outcome]}`}>
                   {outcomeLabel[outcome]}
                 </span>
+                {protocol.fast_tracked && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">
+                    ⚡ Fast Tracked
+                  </span>
+                )}
                 {isAdmin && (
                   <DeleteProtocolButton
                     protocolId={protocol.id}
