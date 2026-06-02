@@ -32,6 +32,13 @@ function avgDays(ms: number) {
   return d < 1 ? '<1' : d.toFixed(1)
 }
 
+function median(values: number[]): number | null {
+  if (!values.length) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
+
 export default async function StatsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -53,7 +60,7 @@ export default async function StatsPage() {
     { data: reviews },
     { data: reviewers },
   ] = await Promise.all([
-    supabase.from('protocols').select('final_outcome, year').eq('omit_record', false),
+    supabase.from('protocols').select('id, final_outcome, year, fast_tracked, submitted_at, approval_date').eq('omit_record', false),
     supabase.from('protocol_assignments').select('protocol_id, reviewer_id, assigned_at'),
     supabase.from('reviews').select('protocol_id, reviewer_id, submitted_at'),
     supabase.from('profiles').select('id, professional_title, firstname, surname').in('role', ['reviewer', 'executive', 'admin']),
@@ -74,9 +81,16 @@ export default async function StatsPage() {
     assignmentMap.set(`${a.protocol_id}:${a.reviewer_id}`, a.assigned_at)
   }
 
+  // Fast-tracked protocols are reviewed by the chair only, so tag their
+  // reviewer-activity rows separately from standard two-reviewer work.
+  const fastTrackedIds = new Set((protocols ?? []).filter(p => p.fast_tracked).map(p => p.id))
+
   const responseTimes: number[] = []
-  const reviewerTimes: Record<string, number[]> = {}
-  const reviewerCounts: Record<string, number> = {}
+  // Keyed by `${reviewerId}:${ft|std}` so a reviewer's fast-track reviews form
+  // their own row labelled "(Fast Tracked)".
+  const groupTimes: Record<string, number[]> = {}
+  const groupCounts: Record<string, number> = {}
+  const groupMeta: Record<string, { reviewerId: string; fastTracked: boolean }> = {}
 
   for (const r of reviews ?? []) {
     const assigned = assignmentMap.get(`${r.protocol_id}:${r.reviewer_id}`)
@@ -84,24 +98,40 @@ export default async function StatsPage() {
     const ms = new Date(r.submitted_at).getTime() - new Date(assigned).getTime()
     if (ms < 0) continue
     responseTimes.push(ms)
-    if (!reviewerTimes[r.reviewer_id]) reviewerTimes[r.reviewer_id] = []
-    reviewerTimes[r.reviewer_id].push(ms)
-    reviewerCounts[r.reviewer_id] = (reviewerCounts[r.reviewer_id] ?? 0) + 1
+    const fastTracked = fastTrackedIds.has(r.protocol_id)
+    const key = `${r.reviewer_id}:${fastTracked ? 'ft' : 'std'}`
+    if (!groupTimes[key]) groupTimes[key] = []
+    groupTimes[key].push(ms)
+    groupCounts[key] = (groupCounts[key] ?? 0) + 1
+    groupMeta[key] = { reviewerId: r.reviewer_id, fastTracked }
   }
 
   const overallAvgMs = responseTimes.length
     ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
     : null
 
+  // Fast-track turnaround: submission → approval. Median is used because
+  // backfilled historical imports (same-day, or multi-year) skew the mean.
+  const fastTrackTurnarounds: number[] = []
+  for (const p of protocols ?? []) {
+    if (!p.fast_tracked || !p.submitted_at || !p.approval_date) continue
+    const ms = new Date(p.approval_date).getTime() - new Date(p.submitted_at).getTime()
+    if (ms < 0) continue
+    fastTrackTurnarounds.push(ms)
+  }
+  const fastTrackMedianMs = median(fastTrackTurnarounds)
+
   // Reviewer leaderboard
   const reviewerMap = new Map((reviewers ?? []).map(r => [r.id, r]))
-  const leaderboard = Object.entries(reviewerCounts)
-    .map(([id, count]) => {
-      const times = reviewerTimes[id] ?? []
+  const leaderboard = Object.entries(groupCounts)
+    .map(([key, count]) => {
+      const times = groupTimes[key] ?? []
       const avgMs = times.length ? times.reduce((a, b) => a + b, 0) / times.length : null
-      const r = reviewerMap.get(id)
-      const name = r ? [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' ') : 'Unknown'
-      return { id, name, count, avgMs }
+      const { reviewerId, fastTracked } = groupMeta[key]
+      const r = reviewerMap.get(reviewerId)
+      const base = r ? [r.professional_title, r.firstname, r.surname].filter(Boolean).join(' ') : 'Unknown'
+      const name = fastTracked ? `${base} (Fast Tracked)` : base
+      return { key, name, count, avgMs }
     })
     .sort((a, b) => b.count - a.count)
 
@@ -118,7 +148,7 @@ export default async function StatsPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Protocol Statistics</h1>
 
       {/* Top stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <StatCard label="Total Protocols" value={total} color="text-gray-900" />
         <StatCard label="Pending" value={outcomeCounts['pending'] ?? 0} color="text-yellow-600" />
         <StatCard label="Approved" value={outcomeCounts['approved'] ?? 0} color="text-green-600" />
@@ -127,6 +157,12 @@ export default async function StatsPage() {
           value={overallAvgMs !== null ? `${avgDays(overallAvgMs)} days` : '—'}
           color="text-blue-600"
           sub={`across ${responseTimes.length} reviews`}
+        />
+        <StatCard
+          label="Fast Track Turnaround"
+          value={fastTrackMedianMs !== null ? `${avgDays(fastTrackMedianMs)} days` : '—'}
+          color="text-purple-600"
+          sub={`median submit→approval · ${fastTrackTurnarounds.length} protocols`}
         />
       </div>
 
@@ -191,8 +227,8 @@ export default async function StatsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {leaderboard.map(({ id, name, count, avgMs }) => (
-                <tr key={id}>
+              {leaderboard.map(({ key, name, count, avgMs }) => (
+                <tr key={key}>
                   <td className="py-2.5 text-gray-900">{name}</td>
                   <td className="py-2.5 text-right text-gray-700">{count}</td>
                   <td className="py-2.5 text-right text-gray-500">
