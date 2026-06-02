@@ -83,19 +83,43 @@ function SendRemindersButton() {
   )
 }
 
+// Years present in the data run 2016→current; "none" covers protocols with no
+// year recorded. Listed newest-first.
+const EXPORT_YEARS = (() => {
+  const current = new Date().getFullYear()
+  const list: string[] = []
+  for (let y = current; y >= 2016; y--) list.push(String(y))
+  return list
+})()
+
 function DownloadCsvButton() {
   const [state, setState] = useState<'idle' | 'downloading' | 'error'>('idle')
+  const [open, setOpen] = useState(false)
+  // Empty = "all years". Otherwise the set of selected year keys (incl. 'none').
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  function toggle(year: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(year)) next.delete(year)
+      else next.add(year)
+      return next
+    })
+  }
 
   async function handleDownload() {
     setState('downloading')
+    setOpen(false)
     try {
-      const res = await fetch('/api/export-protocols')
+      const params = selected.size ? `?years=${[...selected].join(',')}` : ''
+      const res = await fetch(`/api/export-protocols${params}`)
       if (!res.ok) throw new Error(String(res.status))
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `protocols-${new Date().toISOString().split('T')[0]}.csv`
+      const suffix = selected.size ? `-${[...selected].join('-')}` : ''
+      a.download = `protocols${suffix}-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -106,17 +130,75 @@ function DownloadCsvButton() {
     }
   }
 
+  const label = selected.size === 0
+    ? 'All years'
+    : selected.size === 1
+      ? (selected.has('none') ? 'No year' : [...selected][0])
+      : `${selected.size} years`
+
   return (
-    <button
-      onClick={handleDownload}
-      disabled={state === 'downloading'}
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 border border-gray-300 bg-white px-3 py-1.5 rounded-lg hover:border-gray-400 transition disabled:opacity-60"
-    >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-      </svg>
-      {state === 'downloading' ? 'Preparing…' : state === 'error' ? 'Failed — retry' : 'Download CSV'}
-    </button>
+    <div className="flex items-center gap-2">
+      {/* Year picker */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 border border-gray-300 bg-white px-3 py-1.5 rounded-lg hover:border-gray-400 transition"
+        >
+          {label}
+          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <div className="absolute right-0 mt-2 w-44 z-20 rounded-xl border border-gray-200 bg-white p-2 shadow-lg max-h-72 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => setSelected(new Set())}
+                className="w-full text-left px-2 py-1.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <span className={selected.size === 0 ? 'font-semibold text-blue-600' : ''}>All years</span>
+              </button>
+              <div className="my-1 border-t border-gray-100" />
+              {EXPORT_YEARS.map(year => (
+                <label key={year} className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(year)}
+                    onChange={() => toggle(year)}
+                    className="accent-blue-600"
+                  />
+                  {year}
+                </label>
+              ))}
+              <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selected.has('none')}
+                  onChange={() => toggle('none')}
+                  className="accent-blue-600"
+                />
+                No year
+              </label>
+            </div>
+          </>
+        )}
+      </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={state === 'downloading'}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 border border-gray-300 bg-white px-3 py-1.5 rounded-lg hover:border-gray-400 transition disabled:opacity-60"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        {state === 'downloading' ? 'Preparing…' : state === 'error' ? 'Failed — retry' : 'Download CSV'}
+      </button>
+    </div>
   )
 }
 
