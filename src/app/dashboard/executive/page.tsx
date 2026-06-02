@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllRows } from '@/lib/supabase/paginate'
 import { redirect } from 'next/navigation'
 import ProtocolList from '@/components/ProtocolList'
 import MeetingDateManager from '@/components/MeetingDateManager'
@@ -19,14 +20,18 @@ export default async function ExecutiveDashboard() {
     redirect('/dashboard/reviewer')
   }
 
-  const [{ data: protocols }, { data: assignments }, { data: reviews }, { data: meetingDatesRows }, { data: deadlineRows }] = await Promise.all([
-    supabase
-      .from('protocols')
-      .select('*')
-      .eq('omit_record', false)
-      .order('serial_text', { ascending: false, nullsFirst: false })
-      .order('submitted_at', { ascending: false, nullsFirst: false })
-      .limit(10000),
+  const [protocols, [{ data: assignments }, { data: reviews }, { data: meetingDatesRows }, { data: deadlineRows }]] = await Promise.all([
+    // Paged: PostgREST caps responses at 1000 rows, so `.limit()` alone undercounts.
+    fetchAllRows((from, to) =>
+      supabase
+        .from('protocols')
+        .select('*')
+        .eq('omit_record', false)
+        .order('serial_text', { ascending: false, nullsFirst: false })
+        .order('submitted_at', { ascending: false, nullsFirst: false })
+        .range(from, to),
+    ),
+    Promise.all([
     supabase
       .from('protocol_assignments')
       .select('protocol_id, reviewer_id, reviewer:profiles!reviewer_id(professional_title, firstname, surname)'),
@@ -41,9 +46,10 @@ export default async function ExecutiveDashboard() {
       .from('submission_deadlines')
       .select('deadline_date')
       .order('deadline_date'),
+    ]),
   ])
 
-  const all = protocols ?? []
+  const all = protocols
   const counts = {
     total: all.length,
     pending: all.filter(p => p.final_outcome === 'pending').length,

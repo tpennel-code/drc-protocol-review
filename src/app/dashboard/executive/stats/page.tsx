@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllRows } from '@/lib/supabase/paginate'
 import { redirect } from 'next/navigation'
 
 const outcomeLabel: Record<string, string> = {
@@ -54,15 +55,17 @@ export default async function StatsPage() {
     redirect('/dashboard/reviewer')
   }
 
-  const [
-    { data: protocols },
-    { data: assignments },
-    { data: reviews },
-    { data: reviewers },
-  ] = await Promise.all([
-    supabase.from('protocols').select('id, final_outcome, year, fast_tracked, submitted_at, approval_date').eq('omit_record', false),
-    supabase.from('protocol_assignments').select('protocol_id, reviewer_id, assigned_at'),
-    supabase.from('reviews').select('protocol_id, reviewer_id, submitted_at'),
+  // Paged through PostgREST's 1000-row cap so totals don't silently undercount.
+  const [protocols, assignments, reviews, { data: reviewers }] = await Promise.all([
+    fetchAllRows((from, to) =>
+      supabase.from('protocols').select('id, final_outcome, year, fast_tracked, submitted_at, approval_date').eq('omit_record', false).range(from, to),
+    ),
+    fetchAllRows((from, to) =>
+      supabase.from('protocol_assignments').select('protocol_id, reviewer_id, assigned_at').range(from, to),
+    ),
+    fetchAllRows((from, to) =>
+      supabase.from('reviews').select('protocol_id, reviewer_id, submitted_at').range(from, to),
+    ),
     supabase.from('profiles').select('id, professional_title, firstname, surname').in('role', ['reviewer', 'executive', 'admin']),
   ])
 
