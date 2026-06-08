@@ -9,6 +9,7 @@ export async function saveAssignments(
   protocolId: string,
   reviewer1Id: string,
   reviewer2Id: string,
+  reviewer3Id: string,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
 
@@ -41,8 +42,13 @@ export async function saveAssignments(
   if (deleteError) return { error: `Delete failed: ${deleteError.message}` }
 
   const toInsert: { protocol_id: string; reviewer_id: string; assigned_by: string; status: string }[] = []
-  if (reviewer1Id) toInsert.push({ protocol_id: protocolId, reviewer_id: reviewer1Id, assigned_by: user.id, status: 'pending' })
-  if (reviewer2Id && reviewer2Id !== reviewer1Id) toInsert.push({ protocol_id: protocolId, reviewer_id: reviewer2Id, assigned_by: user.id, status: 'pending' })
+  const seen = new Set<string>()
+  for (const reviewerId of [reviewer1Id, reviewer2Id, reviewer3Id]) {
+    if (reviewerId && !seen.has(reviewerId)) {
+      seen.add(reviewerId)
+      toInsert.push({ protocol_id: protocolId, reviewer_id: reviewerId, assigned_by: user.id, status: 'pending' })
+    }
+  }
 
   if (toInsert.length > 0) {
     const { data: inserted, error: insertError } = await supabase

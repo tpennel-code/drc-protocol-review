@@ -43,7 +43,7 @@ export default function FastTrackPanel({
               : 'Fast Track Rejected — Sent for standard review'}
           </p>
           {!fastTrackApproved && (
-            <p className="text-xs text-amber-600 mt-0.5">Assign two reviewers below to proceed.</p>
+            <p className="text-xs text-amber-600 mt-0.5">Assign reviewers below to proceed.</p>
           )}
         </div>
         <button

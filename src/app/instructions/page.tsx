@@ -223,7 +223,7 @@ export default function InstructionsPage() {
         <p className="mt-2 text-gray-700">Click any protocol to open it, then you can:</p>
         <ol className="my-4">
           <Step n={1} title="Assign reviewers">
-            Choose Reviewer 1 and Reviewer 2. Newly-assigned reviewers are emailed automatically.
+            Choose up to three reviewers. Newly-assigned reviewers are emailed automatically.
           </Step>
           <Step n={2} title="Set the meeting date">Assign it to a committee meeting date.</Step>
           <Step n={3} title="Record the outcome & generate the letter">
