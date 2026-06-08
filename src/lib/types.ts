@@ -4,6 +4,27 @@ export type ReviewRecommendation = 'approved' | 'minor_amendment' | 'major_amend
 
 export type OutcomeStatus = 'pending' | 'approved' | 'minor_amendment' | 'major_amendment' | 'rejected' | 'rolled_over' | 'na' | 'Unclassified' | 'fast_track_accepted' | 'fast_track_rejected'
 
+// The fast-track lifecycle is tracked separately from the formal review
+// outcome: a rejected fast-track still proceeds to full review and gets its
+// own `final_outcome`.
+export type FastTrackDecision = 'accepted' | 'rejected'
+export type FastTrackState = 'requested' | 'accepted' | 'rejected'
+
+export function fastTrackState(
+  p: { fast_tracked: boolean | null; fast_track_decision: string | null },
+): FastTrackState | null {
+  if (!p.fast_tracked) return null
+  if (p.fast_track_decision === 'accepted') return 'accepted'
+  if (p.fast_track_decision === 'rejected') return 'rejected'
+  return 'requested'
+}
+
+export const fastTrackLabel: Record<FastTrackState, string> = {
+  requested: 'Fast Track Request',
+  accepted: 'Fast Tracked',
+  rejected: 'Fast Track Reject',
+}
+
 export interface Profile {
   id: string
   email: string
@@ -29,6 +50,7 @@ export interface Protocol {
   submission_type: string | null
   degree: string | null
   fast_tracked: boolean | null
+  fast_track_decision: FastTrackDecision | null
   submitted_at: string | null
   final_outcome: OutcomeStatus
   approval_date: string | null

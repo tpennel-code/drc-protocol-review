@@ -14,19 +14,12 @@ const standardOutcomes: { value: OutcomeStatus; label: string }[] = [
   { value: 'na', label: 'N/A' },
 ]
 
-const fastTrackOutcomes: { value: OutcomeStatus; label: string }[] = [
-  { value: 'fast_track_accepted', label: 'Fast Track Accepted' },
-  { value: 'fast_track_rejected', label: 'Fast Track Rejected' },
-]
-
 export default function OutcomePanel({
   protocolId,
   currentOutcome,
-  fastTracked,
 }: {
   protocolId: string
   currentOutcome: OutcomeStatus
-  fastTracked: boolean | null
 }) {
   const [outcome, setOutcome] = useState<OutcomeStatus>(currentOutcome ?? 'pending')
   const [saving, setSaving] = useState(false)
@@ -39,7 +32,7 @@ export default function OutcomePanel({
     setSuccess('')
     const supabase = createClient()
 
-    const setsApprovalDate = outcome === 'approved' || outcome === 'fast_track_accepted'
+    const setsApprovalDate = outcome === 'approved'
 
     const { error: updateErr } = await supabase
       .from('protocols')
@@ -68,22 +61,10 @@ export default function OutcomePanel({
             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="pending">Pending</option>
-            {fastTracked && (
-              <optgroup label="Fast Track Decision">
-                {fastTrackOutcomes.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </optgroup>
-            )}
-            <optgroup label={fastTracked ? 'Full Review' : undefined}>
-              {standardOutcomes.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </optgroup>
+            {standardOutcomes.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
           </select>
-          {outcome === 'fast_track_rejected' && (
-            <p className="text-xs text-orange-600 mt-1">Protocol will proceed to full review at the next meeting.</p>
-          )}
         </div>
 
 {success && <p className="text-sm text-green-600">{success}</p>}

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 // Order the export columns sensibly rather than relying on DB column order.
 const COLUMNS = [
   'serial_text', 'protocol_number', 'title', 'approved_title',
-  'study_type', 'submission_type', 'degree', 'fast_tracked',
+  'study_type', 'submission_type', 'degree', 'fast_tracked', 'fast_track_decision',
   'applicant_title', 'applicant_firstname', 'applicant_surname', 'applicant_email',
   'supervisor', 'final_outcome', 'meeting_date', 'meeting_outcome',
   'approval_date', 'amendment_date', 'list_amendments',

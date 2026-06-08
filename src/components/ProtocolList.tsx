@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { OutcomeStatus } from '@/lib/types'
+import { OutcomeStatus, FastTrackDecision, fastTrackState, fastTrackLabel } from '@/lib/types'
 import DeleteProtocolButton from '@/components/DeleteProtocolButton'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -64,6 +64,7 @@ type Protocol = {
   meeting_date: string | null
   final_outcome: OutcomeStatus
   fast_tracked: boolean | null
+  fast_track_decision: FastTrackDecision | null
 }
 
 export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAdmin = false }: { protocols: Protocol[], reviewersByProtocol?: Record<string, { name: string; submitted: boolean }[]>, isAdmin?: boolean }) {
@@ -150,6 +151,7 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
       <div className="space-y-3">
         {filtered.map(protocol => {
           const outcome = (protocol.final_outcome ?? 'pending') as OutcomeStatus
+          const ftState = fastTrackState(protocol)
           return (
             <div key={protocol.id} className="flex items-stretch bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-sm transition">
               <Link
@@ -201,9 +203,13 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${outcomeBadge[outcome]}`}>
                   {outcomeLabel[outcome]}
                 </span>
-                {protocol.fast_tracked && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">
-                    ⚡ Fast Tracked
+                {ftState && (
+                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${
+                    ftState === 'accepted' ? 'bg-purple-100 text-purple-700' :
+                    ftState === 'rejected' ? 'bg-orange-100 text-orange-700' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    ⚡ {fastTrackLabel[ftState]}
                   </span>
                 )}
                 {isAdmin && (

@@ -58,7 +58,7 @@ export default async function StatsPage() {
   // Paged through PostgREST's 1000-row cap so totals don't silently undercount.
   const [protocols, assignments, reviews, { data: reviewers }] = await Promise.all([
     fetchAllRows((from, to) =>
-      supabase.from('protocols').select('id, final_outcome, year, fast_tracked, submitted_at, approval_date').eq('omit_record', false).range(from, to),
+      supabase.from('protocols').select('id, final_outcome, year, fast_tracked, fast_track_decision, submitted_at, approval_date').eq('omit_record', false).range(from, to),
     ),
     fetchAllRows((from, to) =>
       supabase.from('protocol_assignments').select('protocol_id, reviewer_id, assigned_at').range(from, to),
@@ -86,7 +86,7 @@ export default async function StatsPage() {
 
   // Fast-tracked protocols are reviewed by the chair only, so tag their
   // reviewer-activity rows separately from standard two-reviewer work.
-  const fastTrackedIds = new Set((protocols ?? []).filter(p => p.fast_tracked).map(p => p.id))
+  const fastTrackedIds = new Set((protocols ?? []).filter(p => p.fast_tracked && p.fast_track_decision === 'accepted').map(p => p.id))
 
   const responseTimes: number[] = []
   // Keyed by `${reviewerId}:${ft|std}` so a reviewer's fast-track reviews form

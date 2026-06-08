@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import AssignReviewerPanel from '@/components/AssignReviewerPanel'
+import FastTrackPanel from '@/components/FastTrackPanel'
 import OutcomePanel from '@/components/OutcomePanel'
+import { fastTrackState, fastTrackLabel } from '@/lib/types'
 import ReviewForm from '@/components/ReviewForm'
 import EmailApplicantButton from '@/components/EmailApplicantButton'
 import MeetingDatePicker from '@/components/MeetingDatePicker'
@@ -68,6 +70,8 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
     ? allProtocols![currentIndex + 1]
     : null
 
+  const ftState = fastTrackState(protocol)
+
   // Executive's own review — only shown if they are assigned
   const isAssigned = assignments?.some(a => a.reviewer_id === user.id) ?? false
 
@@ -120,25 +124,30 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
           <div className="flex items-center gap-3">
           <span className={`text-xs font-medium px-3 py-1.5 rounded-full capitalize whitespace-nowrap ${
             protocol.final_outcome === 'approved' ? 'bg-green-100 text-green-700' :
-            protocol.final_outcome === 'fast_track_accepted' ? 'bg-green-100 text-green-700' :
             protocol.final_outcome === 'rejected' ? 'bg-red-100 text-red-700' :
-            protocol.final_outcome === 'fast_track_rejected' ? 'bg-orange-100 text-orange-700' :
             protocol.final_outcome === 'minor_amendment' ? 'bg-blue-100 text-blue-700' :
             protocol.final_outcome === 'major_amendment' ? 'bg-orange-100 text-orange-700' :
             protocol.final_outcome === 'Unclassified' ? 'bg-purple-100 text-purple-700' :
             'bg-yellow-100 text-yellow-700'
           }`}>
-            {protocol.final_outcome === 'fast_track_accepted' ? 'Fast Track Accepted' :
-             protocol.final_outcome === 'fast_track_rejected' ? 'Fast Track Rejected' :
-             protocol.final_outcome?.replace(/_/g, ' ') ?? 'Pending'}
+            {protocol.final_outcome?.replace(/_/g, ' ') ?? 'Pending'}
           </span>
+          {ftState && (
+            <span className={`text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap ${
+              ftState === 'accepted' ? 'bg-purple-100 text-purple-700' :
+              ftState === 'rejected' ? 'bg-orange-100 text-orange-700' :
+              'bg-amber-100 text-amber-700'
+            }`}>
+              ⚡ {fastTrackLabel[ftState]}
+            </span>
+          )}
           {profile.role === 'admin' && (
             <DeleteProtocolButton protocolId={id} protocolTitle={protocol.title || 'Untitled Protocol'} />
           )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {(protocol.final_outcome === 'approved' || protocol.final_outcome === 'fast_track_accepted') && (
+            {protocol.final_outcome === 'approved' && (
               <>
                 <a href={`/dashboard/executive/protocols/${id}/approval-letter`}
                   className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
@@ -168,7 +177,7 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
                 <EmailApplicantButton protocolId={id} letterType="major_amendment" label="Send Amendment Email to Applicant" />
               </>
             )}
-            {protocol.fast_tracked && protocol.final_outcome === 'fast_track_rejected' && (
+            {ftState === 'rejected' && (
               <>
                 <a href={`/dashboard/executive/protocols/${id}/fasttrack-rejection-letter`}
                   className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition whitespace-nowrap">
@@ -212,14 +221,10 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
             <dt className="font-medium text-gray-500">Fast Track Requested</dt>
             <dd className="text-gray-900">{protocol.fast_tracked ? 'Yes' : 'No'}</dd>
           </div>
-          {protocol.fast_tracked && (
+          {ftState && (
             <div>
-              <dt className="font-medium text-gray-500">Fast Track Outcome</dt>
-              <dd className="text-gray-900">
-                {protocol.final_outcome === 'fast_track_accepted' ? 'Accepted' :
-                 protocol.final_outcome === 'fast_track_rejected' ? 'Rejected' :
-                 '—'}
-              </dd>
+              <dt className="font-medium text-gray-500">Fast Track Status</dt>
+              <dd className="text-gray-900">{fastTrackLabel[ftState]}</dd>
             </div>
           )}
           <div>
@@ -302,6 +307,11 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
         </div>
       )}
 
+      {/* Fast-track decision — chair accepts (no review) or rejects (full review) */}
+      {protocol.fast_tracked && (
+        <FastTrackPanel protocolId={id} decision={protocol.fast_track_decision} />
+      )}
+
       {/* Assign reviewers — three dropdown slots */}
       <AssignReviewerPanel
         protocolId={id}
@@ -371,7 +381,6 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
       <OutcomePanel
         protocolId={id}
         currentOutcome={protocol.final_outcome}
-        fastTracked={protocol.fast_tracked}
       />
     </div>
   )

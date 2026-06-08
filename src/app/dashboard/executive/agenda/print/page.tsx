@@ -45,7 +45,7 @@ export default async function AgendaPrintPage({
   ] = await Promise.all([
     supabase
       .from('protocols')
-      .select('id, serial_text, title, applicant_title, applicant_firstname, applicant_surname, applicant_email, fast_tracked, final_outcome')
+      .select('id, serial_text, title, applicant_title, applicant_firstname, applicant_surname, applicant_email, fast_tracked, fast_track_decision, final_outcome')
       .eq('omit_record', false)
       .or(`meeting_date.eq.${date},meeting_date.like.${date}%`)
       .order('fast_tracked', { ascending: false })
@@ -69,8 +69,12 @@ export default async function AgendaPrintPage({
       .limit(1),
   ])
 
-  const fastTracked = (protocols ?? []).filter(p => p.fast_tracked)
-  const forReview = (protocols ?? []).filter(p => !p.fast_tracked)
+  // Only chair-accepted fast-tracks go in the fast-track section; pending
+  // requests and rejected ones proceed to full review.
+  const isFastTracked = (p: { fast_tracked: boolean | null; fast_track_decision: string | null }) =>
+    p.fast_tracked && p.fast_track_decision === 'accepted'
+  const fastTracked = (protocols ?? []).filter(isFastTracked)
+  const forReview = (protocols ?? []).filter(p => !isFastTracked(p))
 
   const apologisedReviewers = (allReviewers ?? []).filter(r => apologyIds.includes(r.id))
   const chairName = chair
