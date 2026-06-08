@@ -302,7 +302,7 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
         </div>
       )}
 
-      {/* Assign reviewers — two dropdown slots */}
+      {/* Assign reviewers — three dropdown slots */}
       <AssignReviewerPanel
         protocolId={id}
         assignments={assignments ?? []}
