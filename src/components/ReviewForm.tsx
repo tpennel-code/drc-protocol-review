@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { uploadToBucket } from '@/lib/storage'
 import { ReviewRecommendation, Review } from '@/lib/types'
 import { declineAssignment } from '@/lib/assignmentActions'
 
@@ -12,16 +13,6 @@ const recommendations: { value: ReviewRecommendation; label: string }[] = [
   { value: 'major_amendment', label: 'Major Amendment' },
   { value: 'rejected', label: 'Rejected' },
 ]
-
-async function uploadAttachment(file: File): Promise<string> {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('folder', 'reviews')
-  const res = await fetch('/api/upload-protocol-file', { method: 'POST', body: formData })
-  const json = await res.json()
-  if (!res.ok) throw new Error(json.error || 'Upload failed')
-  return json.path as string
-}
 
 export default function ReviewForm({
   protocolId,
@@ -90,7 +81,7 @@ export default function ReviewForm({
       const newFile = fileRef.current?.files?.[0]
       let attachment_path: string | null | undefined = undefined // undefined = leave as-is
       if (newFile) {
-        attachment_path = await uploadAttachment(newFile)
+        attachment_path = await uploadToBucket(supabase, newFile, 'reviews')
       }
 
       const payload: Record<string, unknown> = {

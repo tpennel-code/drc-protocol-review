@@ -2,6 +2,7 @@
 
 import { useState, useRef, forwardRef, FormEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { uploadToBucket } from '@/lib/storage'
 
 const TITLES = ['Dr', 'Prof', 'A/Prof', 'Mr', 'Ms', 'Mrs', 'Other']
 
@@ -59,18 +60,6 @@ const FileField = forwardRef<
 ))
 FileField.displayName = 'FileField'
 
-// ── upload helper ────────────────────────────────────────────────────────────
-
-async function uploadFile(file: File, folder: string): Promise<string> {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('folder', folder)
-  const res = await fetch('/api/upload-protocol-file', { method: 'POST', body: formData })
-  const json = await res.json()
-  if (!res.ok) throw new Error(`File upload failed: ${json.error}`)
-  return json.path
-}
-
 // ── main form ────────────────────────────────────────────────────────────────
 
 export default function SubmitForm() {
@@ -110,21 +99,22 @@ export default function SubmitForm() {
 
     setUploading(true)
     try {
+      const supabase = createClient()
+
       setProgress('Uploading protocol file…')
-      const protocolPath = await uploadFile(protocolFile, 'protocols')
+      const protocolPath = await uploadToBucket(supabase, protocolFile, 'protocols')
 
       setProgress('Uploading datasheet…')
-      const datasheetPath = await uploadFile(datasheetFile, 'datasheets')
+      const datasheetPath = await uploadToBucket(supabase, datasheetFile, 'datasheets')
 
       let supplementaryPath: string | null = null
       if (supplementaryFile) {
         setProgress('Uploading supplementary file…')
-        supplementaryPath = await uploadFile(supplementaryFile, 'supplementary')
+        supplementaryPath = await uploadToBucket(supabase, supplementaryFile, 'supplementary')
       }
 
       setProgress('Saving submission…')
       const submittedAt = new Date().toISOString()
-      const supabase = createClient()
       const { error: err } = await supabase.from('protocols').insert({
         applicant_firstname:         firstname,
         applicant_surname:           surname,
