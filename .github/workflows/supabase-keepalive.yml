@@ -1,0 +1,36 @@
+name: Supabase Keepalive
+
+# Supabase pauses free-tier projects after ~7 days of inactivity. This workflow
+# pings the Supabase REST API once a day so the project registers activity and
+# stays awake.
+#
+# It hits Supabase directly, so it is unaffected by any Vercel Deployment
+# Protection. The values below are the public URL/publishable key that already
+# ship to the browser, so they are safe to keep in the repo.
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # daily at 06:00 UTC
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: https://egylfcdcoqkwxjpziqbx.supabase.co
+          SUPABASE_ANON_KEY: sb_publishable_Z92u-RsuLAEwjldbU01d_g_LAUzFBJb
+        run: |
+          status=$(curl -sS -o /tmp/body.txt -w '%{http_code}' \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/protocols?select=id&limit=1")
+          echo "HTTP $status"
+          cat /tmp/body.txt
+          echo
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Supabase keepalive failed (HTTP $status)"
+            exit 1
+          fi
+          echo "Supabase keepalive OK"
