@@ -95,8 +95,18 @@ CREATE TABLE public.email_logs (
   sent_by UUID REFERENCES public.profiles(id),
   recipient_email TEXT NOT NULL,
   email_type TEXT NOT NULL,
+  resend_message_id TEXT,
+  subject TEXT,
+  delivery_status TEXT,        -- Resend last_event: sent|delivered|bounced|...
+  delivery_checked_at TIMESTAMPTZ,
   sent_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX email_logs_resend_message_id_key
+  ON public.email_logs (resend_message_id)
+  WHERE resend_message_id IS NOT NULL;
+
+CREATE INDEX email_logs_protocol_id_idx ON public.email_logs (protocol_id);
 
 -- ============================================================
 -- ROW LEVEL SECURITY

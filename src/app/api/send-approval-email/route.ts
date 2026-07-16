@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
   const emailBody = `Dear ${salutation}\n\nThank you for submitting your protocol entitled: '${projectTitle}'.  ${config.bodyLine}\n\nKind Regards\n${chairName}\n\n`
 
-  const { error } = await sendEmail({
+  const { data: sendData, error } = await sendEmail({
     to: protocol.applicant_email,
     subject: config.subject,
     text: emailBody,
@@ -95,5 +95,20 @@ export async function POST(req: Request) {
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Record the send so the chair sees a persistent "email sent" pill and can
+  // later verify delivery with Resend. Best-effort: a logging failure must not
+  // fail the send the applicant already received.
+  const { error: logError } = await supabase.from('email_logs').insert({
+    protocol_id: protocolId,
+    sent_by: user.id,
+    recipient_email: protocol.applicant_email,
+    email_type: type,
+    subject: config.subject,
+    resend_message_id: sendData?.id ?? null,
+    delivery_status: 'sent',
+  })
+  if (logError) console.error('email_logs insert failed:', logError.message)
+
   return NextResponse.json({ success: true })
 }

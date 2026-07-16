@@ -105,3 +105,64 @@ export async function sendEmail(args: EmailArgs) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return resend.emails.send(payload as any)
 }
+
+function resendClient(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY not set — Resend query skipped')
+    return null
+  }
+  return new Resend(apiKey)
+}
+
+/**
+ * Ask Resend for the latest delivery event of a previously-sent message.
+ * Returns the `last_event` string (e.g. 'delivered', 'bounced') or null on error.
+ */
+export async function getEmailDeliveryStatus(messageId: string): Promise<string | null> {
+  const resend = resendClient()
+  if (!resend) return null
+  const { data, error } = await resend.emails.get(messageId)
+  if (error || !data) return null
+  return data.last_event ?? null
+}
+
+export type ResendListEmail = {
+  id: string
+  to: string[]
+  subject: string
+  last_event: string
+  created_at: string
+}
+
+/**
+ * Page through Resend's sent-email history (newest first). Resend retains
+ * history for a limited, plan-dependent window, so this only surfaces recent
+ * sends — enough to reconcile logs after the fact. `maxPages` caps the walk.
+ */
+export async function listResendEmails(maxPages = 20): Promise<ResendListEmail[]> {
+  const resend = resendClient()
+  if (!resend) return []
+
+  const out: ResendListEmail[] = []
+  let after: string | undefined
+  for (let page = 0; page < maxPages; page++) {
+    const { data, error } = await resend.emails.list(
+      after ? { limit: 100, after } : { limit: 100 },
+    )
+    if (error || !data) break
+    for (const e of data.data) {
+      out.push({
+        id: e.id,
+        to: e.to ?? [],
+        subject: e.subject ?? '',
+        last_event: e.last_event ?? 'sent',
+        created_at: e.created_at,
+      })
+    }
+    if (!data.has_more || data.data.length === 0) break
+    after = data.data[data.data.length - 1]?.id
+    if (!after) break
+  }
+  return out
+}

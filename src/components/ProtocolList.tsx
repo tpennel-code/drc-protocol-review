@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { OutcomeStatus, FastTrackDecision, fastTrackState, fastTrackLabel } from '@/lib/types'
+import { emailPill, type EmailPillData } from '@/lib/email-pill'
 import DeleteProtocolButton from '@/components/DeleteProtocolButton'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -67,7 +68,7 @@ type Protocol = {
   fast_track_decision: FastTrackDecision | null
 }
 
-export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAdmin = false }: { protocols: Protocol[], reviewersByProtocol?: Record<string, { name: string; submitted: boolean }[]>, isAdmin?: boolean }) {
+export default function ProtocolList({ protocols, reviewersByProtocol = {}, emailByProtocol = {}, isAdmin = false }: { protocols: Protocol[], reviewersByProtocol?: Record<string, { name: string; submitted: boolean }[]>, emailByProtocol?: Record<string, EmailPillData>, isAdmin?: boolean }) {
   const [statusFilter, setStatusFilter] = useState<OutcomeStatus | 'all'>('all')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -152,6 +153,8 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
         {filtered.map(protocol => {
           const outcome = (protocol.final_outcome ?? 'pending') as OutcomeStatus
           const ftState = fastTrackState(protocol)
+          const email = emailByProtocol[protocol.id]
+          const pill = email ? emailPill(email.status) : null
           return (
             <div key={protocol.id} className="flex items-stretch bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-sm transition">
               <Link
@@ -210,6 +213,15 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, isAd
                     'bg-amber-100 text-amber-700'
                   }`}>
                     ⚡ {fastTrackLabel[ftState]}
+                  </span>
+                )}
+                {pill && email && (
+                  <span
+                    title={`Outcome email to ${email.recipient} on ${fmtDate(email.sentAt)}${email.checkedAt ? ` · status verified ${fmtDate(email.checkedAt)}` : ''}`}
+                    className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${pill.className}`}
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    {pill.label}
                   </span>
                 )}
                 {isAdmin && (

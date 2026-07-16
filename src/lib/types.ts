@@ -102,11 +102,24 @@ export interface Review {
   reviewer?: Profile
 }
 
+// Outcome-email types mirror the letter types the send-approval-email route
+// accepts, so a log row records exactly which letter went out.
+export type EmailType = 'approved' | 'minor_amendment' | 'major_amendment' | 'fast_track_rejected'
+
+// Resend's `last_event`. `null` means "accepted by Resend, not yet polled".
+export type DeliveryStatus =
+  | 'sent' | 'delivered' | 'delivery_delayed' | 'bounced' | 'complained'
+  | 'failed' | 'canceled' | 'queued' | 'scheduled' | 'clicked' | 'opened'
+
 export interface EmailLog {
   id: string
   protocol_id: string
   sent_by: string
   recipient_email: string
-  email_type: 'approval' | 'rejection' | 'amendment'
+  email_type: EmailType
+  resend_message_id: string | null
+  subject: string | null
+  delivery_status: DeliveryStatus | null
+  delivery_checked_at: string | null
   sent_at: string
 }

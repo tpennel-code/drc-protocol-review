@@ -6,6 +6,7 @@ import OutcomePanel from '@/components/OutcomePanel'
 import { fastTrackState, fastTrackLabel } from '@/lib/types'
 import ReviewForm from '@/components/ReviewForm'
 import EmailApplicantButton from '@/components/EmailApplicantButton'
+import EmailStatusPill from '@/components/EmailStatusPill'
 import MeetingDatePicker from '@/components/MeetingDatePicker'
 import DeleteProtocolButton from '@/components/DeleteProtocolButton'
 import { resolveStorageLink, storageDisplayName } from '@/lib/storage'
@@ -44,6 +45,15 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
     .from('reviews')
     .select('*, reviewer:profiles(*)')
     .eq('protocol_id', id)
+
+  // Most recent outcome email sent for this protocol, for the sent/delivery pill.
+  const { data: latestEmail } = await supabase
+    .from('email_logs')
+    .select('recipient_email, delivery_status, delivery_checked_at, sent_at')
+    .eq('protocol_id', id)
+    .order('sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   const { data: reviewers } = await supabase
     .from('profiles')
@@ -186,6 +196,15 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
                 </a>
                 <EmailApplicantButton protocolId={id} letterType="fast_track_rejected" label="Send Fast Track Email to Applicant" />
               </>
+            )}
+            {latestEmail && (
+              <EmailStatusPill
+                protocolId={id}
+                recipient={latestEmail.recipient_email}
+                sentAt={latestEmail.sent_at}
+                status={latestEmail.delivery_status}
+                checkedAt={latestEmail.delivery_checked_at}
+              />
             )}
           </div>
         </div>

@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import ProtocolList from '@/components/ProtocolList'
 import MeetingDateManager from '@/components/MeetingDateManager'
 import ExecutiveDashboardTabs from '@/components/ExecutiveDashboardTabs'
+import BackfillEmailsButton from '@/components/BackfillEmailsButton'
+import type { EmailPillData } from '@/lib/email-pill'
 
 export default async function ExecutiveDashboard() {
   const supabase = await createClient()
@@ -48,6 +50,24 @@ export default async function ExecutiveDashboard() {
       .order('deadline_date'),
     ]),
   ])
+
+  // Latest outcome-email send per protocol, for the "email sent" pill.
+  const { data: emailLogs } = await supabase
+    .from('email_logs')
+    .select('protocol_id, email_type, recipient_email, delivery_status, delivery_checked_at, sent_at')
+    .order('sent_at', { ascending: false })
+
+  const emailByProtocol: Record<string, EmailPillData> = {}
+  for (const l of emailLogs ?? []) {
+    if (!l.protocol_id || emailByProtocol[l.protocol_id]) continue // rows are newest-first; keep the first
+    emailByProtocol[l.protocol_id] = {
+      emailType: l.email_type,
+      recipient: l.recipient_email,
+      sentAt: l.sent_at,
+      status: l.delivery_status,
+      checkedAt: l.delivery_checked_at,
+    }
+  }
 
   const all = protocols
   const counts = {
@@ -102,7 +122,7 @@ export default async function ExecutiveDashboard() {
         <h1 className="text-2xl font-bold text-gray-900">Executive Dashboard</h1>
       </div>
       <ExecutiveDashboardTabs
-        protocolsContent={<>{statsCards}<ProtocolList protocols={all} reviewersByProtocol={reviewersByProtocol} isAdmin={profile.role === 'admin'} /></>}
+        protocolsContent={<>{statsCards}{profile.role === 'admin' && (<div className="flex justify-end mb-3"><BackfillEmailsButton /></div>)}<ProtocolList protocols={all} reviewersByProtocol={reviewersByProtocol} emailByProtocol={emailByProtocol} isAdmin={profile.role === 'admin'} /></>}
         meetingDatesContent={<MeetingDateManager rows={meetingRows} />}
       />
     </div>
