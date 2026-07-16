@@ -9,10 +9,10 @@ export type EmailPillData = {
   checkedAt: string | null
 }
 
-type PillTone = 'green' | 'red' | 'gray'
+type PillTone = 'blue' | 'red' | 'gray'
 
 const TONE_CLASS: Record<PillTone, string> = {
-  green: 'bg-green-100 text-green-700',
+  blue: 'bg-blue-100 text-blue-700',
   red: 'bg-red-100 text-red-700',
   gray: 'bg-gray-100 text-gray-600',
 }
@@ -23,7 +23,7 @@ function present(status: DeliveryStatus | null): { label: string; tone: PillTone
     case 'delivered':
     case 'opened':
     case 'clicked':
-      return { label: 'Email Delivered', tone: 'green' }
+      return { label: 'Email Delivered', tone: 'blue' }
     case 'bounced':
     case 'complained':
     case 'failed':
