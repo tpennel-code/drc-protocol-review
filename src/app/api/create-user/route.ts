@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { defaultReviewerPassword } from '@/lib/passwords'
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await admin.auth.admin.createUser({
     email,
-    password: password || 'ChangeMe2024!',
+    password: password || defaultReviewerPassword(surname) || 'ChangeMe2024!',
     email_confirm: true,
   })
 

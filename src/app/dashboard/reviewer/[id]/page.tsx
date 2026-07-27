@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect, notFound } from 'next/navigation'
 import ReviewForm from '@/components/ReviewForm'
 import { resolveStorageLink, storageDisplayName } from '@/lib/storage'
@@ -33,23 +34,31 @@ export default async function ReviewerProtocolPage({ params }: { params: Promise
     .eq('reviewer_id', user.id)
     .single()
 
+  // Submitted documents are uploaded with the service role into the private
+  // protocol-submissions bucket, so reviewers can't mint signed URLs with their
+  // own client. Resolve them with an admin client — the assignment check above
+  // has already authorized this reviewer to view this protocol's documents.
+  const adminClient = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!,
+  )
+
   // Resolve download links for submitted documents
   const docs = await Promise.all(
     [
       { label: 'Protocol Document', value: protocol.protocol_file },
       { label: 'Data Sheet', value: protocol.datasheet_file },
       { label: 'Supplementary File', value: protocol.supplementary_file },
-      { label: 'Checklist', value: protocol.checklist },
     ].map(async d => ({
       label: d.label,
-      url: await resolveStorageLink(supabase, d.value),
+      url: await resolveStorageLink(adminClient, d.value),
       name: storageDisplayName(d.value),
     }))
   )
   const visibleDocs = docs.filter(d => d.url)
 
   // Resolve existing reviewer attachment, if any
-  const existingAttachmentUrl = await resolveStorageLink(supabase, existingReview?.attachment_path)
+  const existingAttachmentUrl = await resolveStorageLink(adminClient, existingReview?.attachment_path)
   const existingAttachmentName = storageDisplayName(existingReview?.attachment_path)
 
   return (

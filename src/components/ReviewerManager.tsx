@@ -239,7 +239,6 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: addForm.email,
-        password: addForm.surname || undefined,
         professional_title: addForm.professional_title,
         firstname: addForm.firstname,
         surname: addForm.surname,
@@ -340,7 +339,6 @@ export default function ReviewerManager({ reviewers }: { reviewers: Profile[] })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          password: surname || undefined,
           firstname: firstIdx >= 0 ? cols[firstIdx] : undefined,
           surname,
           professional_title: titleIdx >= 0 ? cols[titleIdx] : undefined,

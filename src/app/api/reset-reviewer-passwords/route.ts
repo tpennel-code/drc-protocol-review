@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { defaultReviewerPassword } from '@/lib/passwords'
 
 export async function POST() {
   const supabase = await createClient()
@@ -28,8 +29,8 @@ export async function POST() {
   const errors: string[] = []
 
   for (const p of profiles) {
-    if (p.archived || !p.surname) { skipped++; continue }
-    const newPassword = (p.surname + '123').padEnd(6, '0')
+    const newPassword = defaultReviewerPassword(p.surname)
+    if (p.archived || !newPassword) { skipped++; continue }
     const { error } = await admin.auth.admin.updateUserById(p.id, {
       email: p.email,
       email_confirm: true,
