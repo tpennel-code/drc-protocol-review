@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import AssignReviewerPanel from '@/components/AssignReviewerPanel'
 import FastTrackPanel from '@/components/FastTrackPanel'
 import OutcomePanel from '@/components/OutcomePanel'
+import NotesPanel from '@/components/NotesPanel'
 import { fastTrackState, fastTrackLabel } from '@/lib/types'
 import ReviewForm from '@/components/ReviewForm'
 import EmailApplicantButton from '@/components/EmailApplicantButton'
@@ -400,6 +401,13 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
       <OutcomePanel
         protocolId={id}
         currentOutcome={protocol.final_outcome}
+      />
+
+      {/* Administrative notes — editable at any stage, including after approval */}
+      <NotesPanel
+        protocolId={id}
+        currentNotes={protocol.notes}
+        updatedAt={protocol.notes_updated_at}
       />
     </div>
   )

@@ -62,6 +62,9 @@ export interface Protocol {
   applicant_title: string | null
   supervisor: string | null
   reviewer_comments: string | null
+  // Internal administrative notes, editable at any point in the lifecycle.
+  notes: string | null
+  notes_updated_at: string | null
   amendment_letter_status: string | null
   approval_letter_status: string | null
   amendment_date: string | null
