@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect, notFound } from 'next/navigation'
 import AssignReviewerPanel from '@/components/AssignReviewerPanel'
 import FastTrackPanel from '@/components/FastTrackPanel'
@@ -35,6 +36,33 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
     .single()
 
   if (!protocol) notFound()
+
+  // Submitted documents live in the private protocol-submissions bucket and are
+  // uploaded with the service role, so an executive's own client can't mint
+  // signed URLs for them. The role check above has already authorised this user.
+  const adminClient = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!,
+  )
+
+  // Resolve download links for the submitted documents. Legacy imports may hold
+  // a bare filename rather than a stored object, which resolves to no link and
+  // falls back to plain text. The checklist is a confirmation flag, not a file.
+  const submittedDocs = await Promise.all(
+    [
+      { label: 'Protocol Document', value: protocol.protocol_file },
+      { label: 'Data Sheet', value: protocol.datasheet_file },
+      { label: 'Supplementary File', value: protocol.supplementary_file },
+    ].map(async d => ({
+      label: d.label,
+      url: await resolveStorageLink(adminClient, d.value),
+      name: storageDisplayName(d.value),
+    }))
+  )
+  const visibleDocs = [
+    ...submittedDocs.filter(d => d.name),
+    ...(protocol.checklist ? [{ label: 'Checklist', url: null, name: String(protocol.checklist) }] : []),
+  ]
 
   const { data: assignments } = await supabase
     .from('protocol_assignments')
@@ -94,12 +122,12 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
   const reviewAttachments = await Promise.all(
     (reviews ?? []).map(async (r: { id: string; attachment_path: string | null }) => ({
       id: r.id,
-      url: await resolveStorageLink(supabase, r.attachment_path),
+      url: await resolveStorageLink(adminClient, r.attachment_path),
       name: storageDisplayName(r.attachment_path),
     }))
   )
   const reviewAttachmentMap = new Map(reviewAttachments.map(a => [a.id, a]))
-  const myAttachmentUrl = await resolveStorageLink(supabase, myReview?.attachment_path)
+  const myAttachmentUrl = await resolveStorageLink(adminClient, myReview?.attachment_path)
   const myAttachmentName = storageDisplayName(myReview?.attachment_path)
 
   return (
@@ -281,48 +309,32 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
       </div>
 
       {/* Submitted documents */}
-      {[
-        { label: 'Protocol Document', value: protocol.protocol_file },
-        { label: 'Data Sheet', value: protocol.datasheet_file },
-        { label: 'Supplementary File', value: protocol.supplementary_file },
-        { label: 'Checklist', value: protocol.checklist },
-      ].some(f => f.value) && (
+      {visibleDocs.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Submitted Documents</h2>
           <ul className="space-y-3">
-            {[
-              { label: 'Protocol Document', value: protocol.protocol_file },
-              { label: 'Data Sheet', value: protocol.datasheet_file },
-              { label: 'Supplementary File', value: protocol.supplementary_file },
-              { label: 'Checklist', value: protocol.checklist },
-            ].filter(f => f.value).map(({ label, value }) => {
-              const isUrl = value!.startsWith('http://') || value!.startsWith('https://')
-              const filename = isUrl
-                ? decodeURIComponent(value!.split('/').pop() ?? value!)
-                : value!
-              return (
-                <li key={label} className="flex items-center gap-3 text-sm">
-                  <span className="text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                    </svg>
-                  </span>
-                  <span className="w-40 shrink-0 font-medium text-gray-500">{label}</span>
-                  {isUrl ? (
-                    <a
-                      href={value!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline truncate"
-                    >
-                      {filename}
-                    </a>
-                  ) : (
-                    <span className="text-gray-700 truncate">{filename}</span>
-                  )}
-                </li>
-              )
-            })}
+            {visibleDocs.map(({ label, url, name }) => (
+              <li key={label} className="flex items-center gap-3 text-sm">
+                <span className="text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                  </svg>
+                </span>
+                <span className="w-40 shrink-0 font-medium text-gray-500">{label}</span>
+                {url ? (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline truncate"
+                  >
+                    {name}
+                  </a>
+                ) : (
+                  <span className="text-gray-700 truncate">{name}</span>
+                )}
+              </li>
+            ))}
           </ul>
         </div>
       )}
