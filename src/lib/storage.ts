@@ -62,6 +62,24 @@ export async function resolveStorageLink(
 }
 
 /**
+ * Download a stored object into an email attachment.
+ *
+ * Returns null when there is no path or the object has gone missing, so callers
+ * can skip it and still send rather than failing the whole message. Requires a
+ * service-role client — the bucket is private and written with the service role.
+ */
+export async function downloadAttachment(
+  supabase: SupabaseClient,
+  storagePath: string | null | undefined,
+  filename: string,
+): Promise<{ filename: string; content: Buffer } | null> {
+  if (!storagePath) return null
+  const { data, error } = await supabase.storage.from(BUCKET).download(storagePath)
+  if (error || !data) return null
+  return { filename, content: Buffer.from(await data.arrayBuffer()) }
+}
+
+/**
  * Display name for a stored reference. Strips bucket folders and timestamp
  * prefixes added by the upload route so the user sees the original filename.
  */

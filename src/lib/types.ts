@@ -122,6 +122,10 @@ export interface EmailLog {
   email_type: EmailType
   resend_message_id: string | null
   subject: string | null
+  // The body as actually sent, and the filenames that went with it. Both are
+  // recorded because the chair edits the message before sending.
+  body: string | null
+  attachment_names: string[] | null
   delivery_status: DeliveryStatus | null
   delivery_checked_at: string | null
   sent_at: string

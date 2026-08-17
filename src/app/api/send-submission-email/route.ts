@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
+import { downloadAttachment } from '@/lib/storage'
 import { createClient } from '@supabase/supabase-js'
 
 function formatDate(iso: string) {
@@ -11,21 +12,6 @@ function formatDate(iso: string) {
   const hh   = String(d.getHours()).padStart(2, '0')
   const min  = String(d.getMinutes()).padStart(2, '0')
   return `${days[d.getDay()]}, ${dd}/${mm}/${yyyy} - ${hh}:${min}`
-}
-
-async function downloadAttachment(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
-  storagePath: string | null,
-  filename: string,
-) {
-  if (!storagePath) return null
-  const { data, error } = await supabase.storage
-    .from('protocol-submissions')
-    .download(storagePath)
-  if (error || !data) return null
-  const buf = Buffer.from(await data.arrayBuffer())
-  return { filename, content: buf }
 }
 
 export async function POST(req: Request) {

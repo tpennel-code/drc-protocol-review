@@ -136,7 +136,9 @@ export default function ReviewForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Comments</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Comments <span className="font-normal text-gray-500">(may be shared with the applicant)</span>
+          </label>
           <textarea
             value={comments}
             onChange={e => setComments(e.target.value)}
