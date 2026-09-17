@@ -7,16 +7,30 @@ export type OutcomeStatus = 'pending' | 'approved' | 'minor_amendment' | 'major_
 // The fast-track lifecycle is tracked separately from the formal review
 // outcome: a rejected fast-track still proceeds to full review and gets its
 // own `final_outcome`.
+//
+// The two fields mean different things and are deliberately independent:
+//   fast_tracked         - the applicant ticked fast track on the form
+//   fast_track_decision  - the chair accepted or rejected it
+// So `fast_tracked = false` with a decision of 'accepted' is a protocol
+// submitted for full review that the chair has since moved onto the fast
+// track, which is a decision the committee is allowed to take on its own.
 export type FastTrackDecision = 'accepted' | 'rejected'
 export type FastTrackState = 'requested' | 'accepted' | 'rejected'
 
 export function fastTrackState(
   p: { fast_tracked: boolean | null; fast_track_decision: string | null },
 ): FastTrackState | null {
-  if (!p.fast_tracked) return null
   if (p.fast_track_decision === 'accepted') return 'accepted'
   if (p.fast_track_decision === 'rejected') return 'rejected'
-  return 'requested'
+  return p.fast_tracked ? 'requested' : null
+}
+
+// Whether a protocol belongs in the fast-track section of the agenda. Only the
+// chair's acceptance counts: an unanswered request and a rejected one both go
+// to full review. Shared by the agenda page, the agenda PDF, the agenda email
+// and the stats page so the four can never disagree.
+export function isFastTracked(p: { fast_track_decision: string | null }): boolean {
+  return p.fast_track_decision === 'accepted'
 }
 
 export const fastTrackLabel: Record<FastTrackState, string> = {

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { fetchAllRows } from '@/lib/supabase/paginate'
 import { redirect } from 'next/navigation'
+import { isFastTracked } from '@/lib/types'
 
 const outcomeLabel: Record<string, string> = {
   pending: 'Pending',
@@ -86,7 +87,7 @@ export default async function StatsPage() {
 
   // Fast-tracked protocols are reviewed by the chair only, so tag their
   // reviewer-activity rows separately from standard two-reviewer work.
-  const fastTrackedIds = new Set((protocols ?? []).filter(p => p.fast_tracked && p.fast_track_decision === 'accepted').map(p => p.id))
+  const fastTrackedIds = new Set((protocols ?? []).filter(isFastTracked).map(p => p.id))
 
   const responseTimes: number[] = []
   // Keyed by `${reviewerId}:${ft|std}` so a reviewer's fast-track reviews form
@@ -117,7 +118,7 @@ export default async function StatsPage() {
   // backfilled historical imports (same-day, or multi-year) skew the mean.
   const fastTrackTurnarounds: number[] = []
   for (const p of protocols ?? []) {
-    if (!p.fast_tracked || !p.submitted_at || !p.approval_date) continue
+    if (!isFastTracked(p) || !p.submitted_at || !p.approval_date) continue
     const ms = new Date(p.approval_date).getTime() - new Date(p.submitted_at).getTime()
     if (ms < 0) continue
     fastTrackTurnarounds.push(ms)

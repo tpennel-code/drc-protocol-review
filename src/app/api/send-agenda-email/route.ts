@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
 import { renderAgendaPdf } from '@/lib/agenda-pdf-render'
+import { isFastTracked } from '@/lib/types'
 
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -46,7 +47,6 @@ export async function POST(req: Request) {
       .select('id, serial_text, title, applicant_title, applicant_firstname, applicant_surname, applicant_email, fast_tracked, fast_track_decision')
       .eq('omit_record', false)
       .or(`meeting_date.eq.${date},meeting_date.like.${date}%`)
-      .order('fast_tracked', { ascending: false })
       .order('serial_text'),
     supabase.from('profiles')
       .select('id, professional_title, firstname, surname, email')
@@ -66,8 +66,6 @@ export async function POST(req: Request) {
 
   // Only chair-accepted fast-tracks go in the fast-track section; pending
   // requests and rejected ones proceed to full review.
-  const isFastTracked = (p: { fast_tracked: boolean | null; fast_track_decision: string | null }) =>
-    p.fast_tracked && p.fast_track_decision === 'accepted'
   const fastTracked = (protocols ?? []).filter(isFastTracked)
   const forReview = (protocols ?? []).filter(p => !isFastTracked(p))
   const apologisedNames = (allReviewers ?? [])

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import PrintButton from './PrintButton'
 import SendAgendaButton from './SendAgendaButton'
+import { isFastTracked } from '@/lib/types'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 function fmtDate(iso: string) {
@@ -48,7 +49,6 @@ export default async function AgendaPrintPage({
       .select('id, serial_text, title, applicant_title, applicant_firstname, applicant_surname, applicant_email, fast_tracked, fast_track_decision, final_outcome')
       .eq('omit_record', false)
       .or(`meeting_date.eq.${date},meeting_date.like.${date}%`)
-      .order('fast_tracked', { ascending: false })
       .order('serial_text'),
     supabase
       .from('profiles')
@@ -71,8 +71,6 @@ export default async function AgendaPrintPage({
 
   // Only chair-accepted fast-tracks go in the fast-track section; pending
   // requests and rejected ones proceed to full review.
-  const isFastTracked = (p: { fast_tracked: boolean | null; fast_track_decision: string | null }) =>
-    p.fast_tracked && p.fast_track_decision === 'accepted'
   const fastTracked = (protocols ?? []).filter(isFastTracked)
   const forReview = (protocols ?? []).filter(p => !isFastTracked(p))
 

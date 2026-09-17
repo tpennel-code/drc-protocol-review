@@ -339,10 +339,15 @@ export default async function ExecutiveProtocolPage({ params }: { params: Promis
         </div>
       )}
 
-      {/* Fast-track decision — chair accepts (no review) or rejects (full review) */}
-      {protocol.fast_tracked && (
-        <FastTrackPanel protocolId={id} decision={protocol.fast_track_decision} />
-      )}
+      {/* Fast-track decision — chair accepts (no review) or rejects (full review).
+          Shown for every protocol: one submitted through the website for full
+          review can still be moved onto the fast track by the committee. */}
+      <FastTrackPanel
+        protocolId={id}
+        decision={protocol.fast_track_decision}
+        requested={!!protocol.fast_tracked}
+        outcome={protocol.final_outcome ?? 'pending'}
+      />
 
       {/* Assign reviewers — three dropdown slots */}
       <AssignReviewerPanel
