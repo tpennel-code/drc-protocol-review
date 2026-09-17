@@ -72,6 +72,7 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, emai
   const [statusFilter, setStatusFilter] = useState<OutcomeStatus | 'all'>('all')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [query, setQuery] = useState('')
 
   function sortKey(p: Protocol): number {
     // Serial-text protocols: yr=2026,seq=371 → 2.026e12
@@ -88,8 +89,17 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, emai
     return 0
   }
 
+  // Locate a protocol by applicant surname or any part of the title. First
+  // name and serial number are matched on the same pass, since those are the
+  // other two things an executive tends to have to hand.
+  const q = query.trim().toLowerCase()
+  const matchesQuery = (p: Protocol) =>
+    !q || [p.applicant_surname, p.applicant_firstname, p.title, p.serial_text]
+      .some(field => field?.toLowerCase().includes(q))
+
   const filtered = protocols
     .filter(p => statusFilter === 'all' || p.final_outcome === statusFilter)
+    .filter(matchesQuery)
     .slice()
     .sort((a, b) => {
       const da = sortKey(a)
@@ -101,6 +111,30 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, emai
     <div>
       {/* Controls */}
       <div className="flex items-center gap-3 mb-5">
+        {/* Search */}
+        <div className="relative flex-1 max-w-sm">
+          <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+          </svg>
+          <input
+            type="search"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search surname or title…"
+            aria-label="Search protocols by surname or title"
+            className="w-full text-sm text-gray-700 border border-gray-300 bg-white rounded-lg pl-9 pr-8 py-2 hover:border-gray-400 focus:border-blue-400 focus:outline-none transition"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none px-1 transition"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
         {/* Status filter dropdown */}
         <div className="relative">
           <button
@@ -236,7 +270,9 @@ export default function ProtocolList({ protocols, reviewersByProtocol = {}, emai
           )
         })}
         {filtered.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-12">No protocols match this filter.</p>
+          <p className="text-sm text-gray-400 text-center py-12">
+            {q ? `No protocols match “${query.trim()}”.` : 'No protocols match this filter.'}
+          </p>
         )}
       </div>
     </div>
